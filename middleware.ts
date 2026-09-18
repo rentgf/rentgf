@@ -1,12 +1,21 @@
-import { type NextRequest } from 'next/server'
-import { updateSession } from '@/lib/supabase/middleware'
+import { NextRequest, NextResponse } from 'next/server'
 
-export async function middleware(request: NextRequest) {
-  return updateSession(request)
+export function middleware(req: NextRequest) {
+  const { pathname } = req.nextUrl
+
+  // Protect admin routes (except login page and API)
+  if (pathname.startsWith('/admin') && pathname !== '/admin/login') {
+    const cookie = req.cookies.get('admin_session')?.value
+    const adminPassword = process.env.ADMIN_PASSWORD
+
+    if (!adminPassword || cookie !== adminPassword) {
+      return NextResponse.redirect(new URL('/admin/login', req.url))
+    }
+  }
+
+  return NextResponse.next()
 }
 
 export const config = {
-  matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
-  ],
+  matcher: ['/admin/:path*', '/dashboard/:path*', '/booking/:path*', '/messages/:path*', '/profile/:path*', '/settings/:path*', '/favorites/:path*', '/likes/:path*', '/notifications/:path*'],
 }

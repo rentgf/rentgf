@@ -1,10 +1,8 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname, useRouter } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { usePathname } from 'next/navigation'
 import { BarChart2, BookOpen, LogOut, Settings, ShieldCheck, Users } from 'lucide-react'
-import { createClient } from '@/lib/supabase/client'
 
 const NAV = [
   { href: '/admin', label: 'Overview', icon: BarChart2 },
@@ -13,36 +11,16 @@ const NAV = [
   { href: '/admin/reports', label: 'Reports', icon: Settings },
 ]
 
+async function signOut() {
+  await fetch('/api/admin/logout', { method: 'POST' })
+  window.location.href = '/admin/login'
+}
+
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
-  const router = useRouter()
-  const [checking, setChecking] = useState(true)
 
-  useEffect(() => {
-    async function checkAdmin() {
-      const supabase = createClient()
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) { router.replace('/login?redirectTo=/admin'); return }
-      const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
-      if (profile?.role !== 'admin') { router.replace('/'); return }
-      setChecking(false)
-    }
-    checkAdmin()
-  }, [router])
-
-  async function signOut() {
-    const supabase = createClient()
-    await supabase.auth.signOut()
-    router.push('/')
-  }
-
-  if (checking) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-[#fbfaf7]">
-        <p className="text-sm text-[#738078]">Checking access…</p>
-      </div>
-    )
-  }
+  // Don't wrap the login page
+  if (pathname === '/admin/login') return <>{children}</>
 
   return (
     <div className="flex min-h-screen bg-[#f5f3ef]">
