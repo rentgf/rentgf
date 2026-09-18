@@ -1,15 +1,85 @@
 'use client'
 
-import Link from 'next/link'
 import { useEffect, useState } from 'react'
-import { Bell, CheckCircle2 } from 'lucide-react'
+import { Bell } from 'lucide-react'
 import { MobileShell } from '@/components/mobile-shell'
-import { getPreviewNotifications } from '@/lib/preview-data'
+import { createClient } from '@/lib/supabase/client'
+import { useRouter } from 'next/navigation'
 
-type Notification = { id: string; title: string; body: string; createdAt: string }
+type Notification = {
+  id: string
+  type: string
+  title: string
+  body: string | null
+  is_read: boolean | null
+  created_at: string | null
+}
 
 export default function NotificationsPage() {
+  const router = useRouter()
   const [notifications, setNotifications] = useState<Notification[]>([])
-  useEffect(() => setNotifications(getPreviewNotifications()), [])
-  return <MobileShell title="Notifications" showBack><main className="mx-auto max-w-xl px-4 py-7"><div className="flex items-center justify-between"><div><p className="text-sm font-semibold uppercase tracking-[.18em] text-[#c36d4d]">Updates</p><h1 className="mt-2 text-3xl font-semibold">Your notifications</h1></div><Bell className="size-6 text-[#c36d4d]" /></div>{notifications.length ? <div className="mt-7 grid gap-3">{notifications.map((notification) => <section key={notification.id} className="rounded-2xl border border-[#e9e2d9] bg-white p-5"><div className="flex gap-3"><CheckCircle2 className="size-5 shrink-0 text-[#4e8068]" /><div><h2 className="font-semibold">{notification.title}</h2><p className="mt-1 text-sm leading-6 text-[#68756e]">{notification.body}</p></div></div></section>)}</div> : <section className="mt-7 rounded-3xl border border-[#e9e2d9] bg-white p-6"><CheckCircle2 className="size-8 text-[#4e8068]" /><h2 className="mt-4 text-lg font-semibold">You are all caught up</h2><p className="mt-2 text-sm leading-6 text-[#68756e]">Booking updates, messages, and safety alerts will appear here.</p><Link href="/discover" className="mt-6 inline-flex rounded-full bg-[#173f35] px-5 py-3 text-sm font-semibold text-white">Discover companions</Link></section>}</main></MobileShell>
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    async function load() {
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) { router.push('/login?redirectTo=/notifications'); return }
+      const { data } = await supabase
+        .from('notifications')
+        .select('id, type, title, body, is_read, created_at')
+        .eq('profile_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(50)
+      setNotifications(data ?? [])
+      // Mark all as read
+      if (data && data.length > 0) {
+        await supabase.from('notifications').update({ is_read: true }).eq('profile_id', user.id).eq('is_read', false)
+      }
+      setLoading(false)
+    }
+    load()
+  }, [router])
+
+  return (
+    <MobileShell title="Notifications">
+      <main className="mx-auto max-w-xl px-4 py-6">
+        {loading ? (
+          <p className="text-center text-sm text-[#738078]">Loading…</p>
+        ) : notifications.length === 0 ? (
+          <div className="py-12 text-center">
+            <div className="mx-auto flex size-16 items-center justify-center rounded-full bg-[#edf4ed]">
+              <Bell className="size-7 text-[#4e8068]" />
+            </div>
+            <h1 className="mt-5 text-2xl font-semibold">No notifications</h1>
+            <p className="mt-2 text-sm text-[#68756e]">You are all caught up!</p>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-3">
+            {notifications.map((notif) => (
+              <div
+                key={notif.id}
+                className={`rounded-2xl border p-4 ${
+                  notif.is_read ? 'border-[#e9e2d9] bg-white' : 'border-[#c8dfc7] bg-[#f4faf4]'
+                }`}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="font-semibold text-[#173f35]">{notif.title}</p>
+                    {notif.body && <p className="mt-1 text-sm leading-6 text-[#68756e]">{notif.body}</p>}
+                  </div>
+                  {!notif.is_read && <span className="mt-1 size-2 shrink-0 rounded-full bg-[#4e8068]" />}
+                </div>
+                {notif.created_at && (
+                  <p className="mt-2 text-xs text-[#9aa49d]">
+                    {new Date(notif.created_at).toLocaleString()}
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </main>
+    </MobileShell>
+  )
 }
