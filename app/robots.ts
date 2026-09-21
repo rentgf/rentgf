@@ -1,2 +1,36 @@
 import type { MetadataRoute } from 'next'
-export default function robots(): MetadataRoute.Robots { return { rules: { userAgent: '*', allow: '/', disallow: ['/api/', '/aryanbloch/', '/dashboard/'] }, sitemap: 'https://rentgf.example/sitemap.xml' } }
+
+export default function robots(): MetadataRoute.Robots {
+  return {
+    rules: [
+      {
+        userAgent: '*',
+        allow: '/',
+        disallow: [
+          '/admin/',
+          '/api/',
+          '/dashboard',
+          '/messages',
+          '/notifications',
+          '/settings',
+          '/booking/',
+        ],
+      },
+      {
+        userAgent: 'Googlebot',
+        allow: '/',
+        disallow: [
+          '/admin/',
+          '/api/',
+          '/dashboard',
+          '/messages',
+          '/notifications',
+          '/settings',
+          '/booking/',
+        ],
+      },
+    ],
+    sitemap: 'https://rentgf.in/sitemap.xml',
+    host: 'https://rentgf.in',
+  }
+}
