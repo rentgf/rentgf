@@ -30,7 +30,7 @@ export default function robots(): MetadataRoute.Robots {
         ],
       },
     ],
-    sitemap: 'https://rentgf.in/sitemap.xml',
-    host: 'https://rentgf.in',
+    sitemap: 'https://rentgf.site/sitemap.xml',
+    host: 'https://rentgf.site',
   }
 }
