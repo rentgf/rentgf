@@ -21,7 +21,6 @@ export default function BecomeCompanionPage() {
   // Personal
   const [displayName, setDisplayName] = useState('')
   const [dob, setDob] = useState('')
-  const [gender, setGender] = useState('')
   const [city, setCity] = useState('')
   const [phone, setPhone] = useState('')
 
@@ -47,37 +46,39 @@ export default function BecomeCompanionPage() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) { router.push('/login?redirectTo=/become-companion'); return }
 
-    // Update profile
-    await supabase.from('profiles').update({
+    // Update profile. `profiles` has no `gender` column, and `profile_photo_url`
+    // lives on `profiles`, not `companion_profiles`.
+    const { error: profileError } = await supabase.from('profiles').update({
       display_name: displayName || undefined,
       date_of_birth: dob || undefined,
-      gender: gender || undefined,
       phone: phone || undefined,
+      profile_photo_url: photoUrl || undefined,
     }).eq('id', user.id)
+    if (profileError) { setError(profileError.message); setSubmitting(false); return }
 
-    // Create companion profile
+    // Create companion profile. `companion_profiles` has no `is_approved` or
+    // `availability_status` columns — review state is `verification_status`,
+    // and it is keyed by `profile_id` (not `id`).
     const { error: cpError } = await supabase.from('companion_profiles').upsert({
-      id: user.id,
+      profile_id: user.id,
       bio,
       city,
       starting_price: Number(price),
       categories: selectedCategories,
       languages: selectedLanguages,
-      profile_photo_url: photoUrl || null,
-      is_approved: false,
+      verification_status: 'pending',
       is_visible: false,
-      availability_status: 'available',
-    }, { onConflict: 'id' })
+    }, { onConflict: 'profile_id' })
 
     if (cpError) { setError(cpError.message); setSubmitting(false); return }
 
     // Update role
-    await supabase.from('profiles').update({ role: 'companion_pending' }).eq('id', user.id)
+    await supabase.from('profiles').update({ role: 'companion' }).eq('id', user.id)
 
     // Create notification
     await supabase.from('notifications').insert({
       profile_id: user.id,
-      type: 'application_submitted',
+      type: 'verification',
       title: 'Application submitted!',
       body: 'Your companion application is under review. We will notify you within 48 hours.',
     })
@@ -171,17 +172,6 @@ export default function BecomeCompanionPage() {
                 Date of birth
                 <input type="date" required value={dob} onChange={(e) => setDob(e.target.value)}
                   className="mt-2 w-full rounded-xl border border-[#e5e1da] px-3 py-3 outline-none focus:ring-2 focus:ring-[#bdd2c7]" />
-              </label>
-              <label className="text-sm font-medium">
-                Gender
-                <select value={gender} onChange={(e) => setGender(e.target.value)}
-                  className="mt-2 w-full rounded-xl border border-[#e5e1da] px-3 py-3 outline-none focus:ring-2 focus:ring-[#bdd2c7]">
-                  <option value="">Select gender</option>
-                  <option value="female">Female</option>
-                  <option value="male">Male</option>
-                  <option value="non_binary">Non-binary</option>
-                  <option value="prefer_not_to_say">Prefer not to say</option>
-                </select>
               </label>
               <label className="text-sm font-medium">
                 City

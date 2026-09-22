@@ -61,16 +61,18 @@ export default function DiscoverPage() {
       const { data: favs } = await supabase.from('favorites').select('companion_profile_id').eq('customer_profile_id', user.id)
       if (favs) setSavedIds(new Set(favs.map((f) => f.companion_profile_id)))
     }
+    // `companion_profiles` has no `is_approved`/`review_count` columns. The real
+    // columns are `verification_status` and `total_reviews`.
     const { data } = await supabase
       .from('companion_profiles')
-      .select('id, bio, city, starting_price, avg_rating, review_count, categories, languages, profiles!inner(display_name, profile_photo_url)')
-      .eq('is_approved', true)
+      .select('id, bio, city, starting_price, avg_rating, total_reviews, categories, languages, profiles!inner(display_name, profile_photo_url)')
+      .eq('verification_status', 'approved')
       .eq('is_visible', true)
       .order('avg_rating', { ascending: false })
     if (data) {
       const mapped: CompanionCard[] = data.map((row) => {
         const profile = row.profiles as unknown as { display_name: string | null; profile_photo_url: string | null }
-        return { id: row.id, bio: row.bio, city: row.city, starting_price: row.starting_price, avg_rating: row.avg_rating, review_count: row.review_count, categories: row.categories, languages: row.languages, display_name: profile.display_name, profile_photo_url: profile.profile_photo_url }
+        return { id: row.id, bio: row.bio, city: row.city, starting_price: row.starting_price, avg_rating: row.avg_rating, review_count: row.total_reviews, categories: row.categories, languages: row.languages, display_name: profile.display_name, profile_photo_url: profile.profile_photo_url }
       })
       setCompanions(mapped)
       setCities([...new Set(mapped.map((c) => c.city).filter(Boolean))] as string[])
