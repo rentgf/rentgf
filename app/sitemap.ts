@@ -1,6 +1,6 @@
 import type { MetadataRoute } from 'next'
 
-const SITE_URL = 'https://rentgf.in'
+const SITE_URL = 'https://rentgf.site'
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const cities = [
