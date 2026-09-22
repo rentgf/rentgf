@@ -17,10 +17,10 @@ type Profile = {
 }
 
 type CompanionProfile = {
-  is_approved: boolean | null
+  verification_status: string | null
   is_visible: boolean | null
   avg_rating: number | null
-  review_count: number | null
+  total_reviews: number | null
   city: string | null
   starting_price: number | null
 } | null
@@ -37,9 +37,12 @@ export default function ProfilePage() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { router.push('/login?redirectTo=/profile'); return }
 
+      // `companion_profiles` is keyed by its own `id`, linked to the user via
+      // `profile_id` (not `id`). It also has no `is_approved`/`review_count`
+      // columns — the real columns are `verification_status`/`total_reviews`.
       const [profileRes, companionRes] = await Promise.all([
         supabase.from('profiles').select('display_name, email, profile_photo_url, role, account_status, date_of_birth').eq('id', user.id).single(),
-        supabase.from('companion_profiles').select('is_approved, is_visible, avg_rating, review_count, city, starting_price').eq('id', user.id).maybeSingle(),
+        supabase.from('companion_profiles').select('verification_status, is_visible, avg_rating, total_reviews, city, starting_price').eq('profile_id', user.id).maybeSingle(),
       ])
 
       setProfile(profileRes.data ?? null)
@@ -56,7 +59,8 @@ export default function ProfilePage() {
   }
 
   const initials = profile?.display_name?.[0]?.toUpperCase() ?? '?'
-  const isCompanion = profile?.role === 'companion' || profile?.role === 'companion_pending'
+  const isCompanion = profile?.role === 'companion'
+  const isApproved = companionProfile?.verification_status === 'approved'
 
   return (
     <MobileShell title="Profile">
@@ -81,7 +85,7 @@ export default function ProfilePage() {
                 )}
                 <div className="min-w-0">
                   <p className="text-xs font-semibold uppercase tracking-[.16em] text-[#c36d4d]">
-                    {profile?.role === 'companion' ? 'Companion' : profile?.role === 'companion_pending' ? 'Pending Review' : 'Member'}
+                    {profile?.role === 'companion' ? (isApproved ? 'Companion' : 'Pending Review') : 'Member'}
                   </p>
                   <h1 className="mt-0.5 text-xl font-semibold text-[#173f35] truncate">{profile?.display_name ?? 'Your Profile'}</h1>
                   <p className="mt-0.5 text-sm text-[#68756e] truncate">{profile?.email}</p>
@@ -102,31 +106,31 @@ export default function ProfilePage() {
                     <p className="font-semibold text-sm">Companion profile</p>
                   </div>
                   <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
-                    companionProfile?.is_approved ? 'bg-[#edf4ed] text-[#4e8068]' : 'bg-[#fff8ed] text-[#8c5c2a]'
+                    isApproved ? 'bg-[#edf4ed] text-[#4e8068]' : 'bg-[#fff8ed] text-[#8c5c2a]'
                   }`}>
-                    {companionProfile?.is_approved ? 'Approved' : 'Pending review'}
+                    {isApproved ? 'Approved' : 'Pending review'}
                   </span>
                 </div>
-                {companionProfile?.is_approved && (
+                {isApproved && (
                   <div className="mt-4 grid grid-cols-2 gap-3">
                     <div className="rounded-xl bg-[#f5f3ef] p-3">
                       <p className="text-xs text-[#8a9490]">Rating</p>
                       <p className="mt-1 flex items-center gap-1 font-semibold">
                         <Star className="size-3.5 fill-[#e7a547] text-[#e7a547]" />
-                        {companionProfile.avg_rating ? Number(companionProfile.avg_rating).toFixed(1) : '–'}
+                        {companionProfile?.avg_rating ? Number(companionProfile.avg_rating).toFixed(1) : '–'}
                       </p>
                     </div>
                     <div className="rounded-xl bg-[#f5f3ef] p-3">
                       <p className="text-xs text-[#8a9490]">Reviews</p>
-                      <p className="mt-1 font-semibold">{companionProfile.review_count ?? 0}</p>
+                      <p className="mt-1 font-semibold">{companionProfile?.total_reviews ?? 0}</p>
                     </div>
                     <div className="rounded-xl bg-[#f5f3ef] p-3">
                       <p className="text-xs text-[#8a9490]">City</p>
-                      <p className="mt-1 font-semibold text-sm">{companionProfile.city ?? '–'}</p>
+                      <p className="mt-1 font-semibold text-sm">{companionProfile?.city ?? '–'}</p>
                     </div>
                     <div className="rounded-xl bg-[#f5f3ef] p-3">
                       <p className="text-xs text-[#8a9490]">Rate</p>
-                      <p className="mt-1 font-semibold text-sm">₹{(companionProfile.starting_price ?? 0).toLocaleString('en-IN')}/hr</p>
+                      <p className="mt-1 font-semibold text-sm">₹{(companionProfile?.starting_price ?? 0).toLocaleString('en-IN')}/hr</p>
                     </div>
                   </div>
                 )}
