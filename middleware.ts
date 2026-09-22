@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { updateSession } from '@/lib/supabase/middleware'
 
-export function middleware(req: NextRequest) {
+export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl
 
   // Protect admin routes (except login page and API)
@@ -11,9 +12,15 @@ export function middleware(req: NextRequest) {
     if (!adminPassword || cookie !== adminPassword) {
       return NextResponse.redirect(new URL('/admin/login', req.url))
     }
+    return NextResponse.next()
   }
 
-  return NextResponse.next()
+  // `lib/supabase/middleware.ts` defines the Supabase session refresh + auth
+  // redirect logic, but it was never called from here. Without this, the
+  // Supabase session cookie never refreshes and protected routes
+  // (dashboard, booking, messages, profile, settings, favorites, likes,
+  // notifications) never actually check whether the user is logged in.
+  return updateSession(req)
 }
 
 export const config = {
