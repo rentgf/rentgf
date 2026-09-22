@@ -2,7 +2,7 @@ import { Analytics } from '@vercel/analytics/next'
 import type { Metadata, Viewport } from 'next'
 import './globals.css'
 
-const SITE_URL = 'https://rentgf.in'
+const SITE_URL = 'https://rentgf.site'
 const SITE_NAME = 'RentGF'
 const TITLE = 'RentGF — Verified Social Companion App in India'
 const DESCRIPTION =
