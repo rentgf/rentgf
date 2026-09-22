@@ -4,7 +4,7 @@
       .bg { fill: #173f35; }
     }
     @media (prefers-color-scheme: dark) {
-      .bg { fill: #1a4a3e; }
+      .bg { fill: #1f4e42; }
     }
   </style>
   <rect class="bg" width="180" height="180" rx="40"/>
