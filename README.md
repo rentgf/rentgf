@@ -44,3 +44,4 @@ pnpm dev
 - `lib/supabase/database.types.ts` — Full TypeScript types for all tables
 - `lib/data/` — Server actions for companions, bookings, messages, favorites
 - `middleware.ts` — Session refresh + route protection
+
