@@ -41,10 +41,11 @@ export default function CompanionProfilePage({ params }: { params: Promise<{ id:
     async function load() {
       const supabase = createClient()
 
-      // Load companion
+      // Load companion. `companion_profiles` has no `review_count` column —
+      // the real column is `total_reviews`.
       const { data } = await supabase
         .from('companion_profiles')
-        .select('id, bio, city, starting_price, avg_rating, review_count, categories, interests, languages, profiles!inner(display_name, profile_photo_url, date_of_birth)')
+        .select('id, bio, city, starting_price, avg_rating, total_reviews, categories, interests, languages, profiles!inner(display_name, profile_photo_url, date_of_birth)')
         .eq('id', id)
         .eq('is_visible', true)
         .single()
@@ -63,7 +64,7 @@ export default function CompanionProfilePage({ params }: { params: Promise<{ id:
         city: data.city,
         starting_price: data.starting_price,
         avg_rating: data.avg_rating,
-        review_count: data.review_count,
+        review_count: data.total_reviews,
         categories: data.categories,
         interests: data.interests,
         languages: data.languages,

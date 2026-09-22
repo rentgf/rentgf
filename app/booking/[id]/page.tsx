@@ -79,25 +79,27 @@ export default function BookingPage({ params }: { params: Promise<{ id: string }
     if (!location) { setError('Please enter a meeting location.'); setSubmitting(false); return }
 
     const amount = (companion?.starting_price ?? 999) * duration
-    const platformFee = Math.round(amount * 0.15)
 
-    // Create booking with pending_payment status
+    // Create booking. `bookings` has no `location`, `notes`, `platform_fee`,
+    // `total_amount`, or `companion_earnings` columns. The real columns are
+    // `location_description`, `customer_notes`, `price`/`final_price`, and
+    // `payment_status` values are upper-case ('PENDING').
     const { data: booking, error: bookingError } = await supabase
       .from('bookings')
       .insert({
         customer_profile_id: user.id,
         companion_profile_id: id,
         status: 'pending',
-        payment_status: 'pending',
+        payment_status: 'PENDING',
         scheduled_date: date,
         scheduled_time: time,
         duration_hours: duration,
-        location,
-        notes: note || null,
-        total_amount: amount,
+        location_description: location,
+        customer_notes: note || null,
+        activity_type: activity || null,
+        price: amount,
+        final_price: amount,
         currency: 'INR',
-        platform_fee: platformFee,
-        companion_earnings: amount - platformFee,
       })
       .select('id')
       .single()
@@ -114,7 +116,7 @@ export default function BookingPage({ params }: { params: Promise<{ id: string }
       // No payment configured — save booking as-is
       await supabase.from('notifications').insert({
         profile_id: user.id,
-        type: 'booking_created',
+        type: 'booking',
         title: 'Booking request sent',
         body: `Your booking request with ${companion?.display_name ?? 'the companion'} has been sent.`,
       })
