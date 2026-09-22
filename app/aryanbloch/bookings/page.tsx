@@ -7,7 +7,7 @@ type Booking = {
   id: string
   status: string
   payment_status: string | null
-  total_amount: number | null
+  final_price: number | null
   scheduled_date: string | null
   scheduled_time: string | null
   created_at: string | null
@@ -25,10 +25,12 @@ export default function AdminBookingsPage() {
   useEffect(() => {
     async function load() {
       const supabase = createClient()
+      // `bookings` has no meaningful `total_amount` value used by the app.
+      // The actual charged amount after discounts is `final_price`.
       const { data } = await supabase
         .from('bookings')
         .select(`
-          id, status, payment_status, total_amount, scheduled_date, scheduled_time, created_at,
+          id, status, payment_status, final_price, scheduled_date, scheduled_time, created_at,
           customer:profiles!customer_profile_id(display_name),
           companion:companion_profiles!companion_profile_id(profiles!inner(display_name))
         `)
@@ -45,7 +47,7 @@ export default function AdminBookingsPage() {
             id: b.id,
             status: b.status,
             payment_status: b.payment_status,
-            total_amount: b.total_amount,
+            final_price: b.final_price,
             scheduled_date: b.scheduled_date,
             scheduled_time: b.scheduled_time,
             created_at: b.created_at,
@@ -118,7 +120,7 @@ export default function AdminBookingsPage() {
                       {b.scheduled_time ? ` ${b.scheduled_time}` : ''}
                     </td>
                     <td className="px-4 py-3 font-medium">
-                      {b.total_amount ? `₹${b.total_amount.toLocaleString('en-IN')}` : '—'}
+                      {b.final_price ? `₹${b.final_price.toLocaleString('en-IN')}` : '—'}
                     </td>
                     <td className="px-4 py-3">
                       <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
@@ -130,8 +132,8 @@ export default function AdminBookingsPage() {
                     </td>
                     <td className="px-4 py-3">
                       <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
-                        b.payment_status === 'paid' ? 'bg-[#edf4ed] text-[#4e8068]' : 'bg-[#f5f0e9] text-[#6e5a3c]'
-                      }`}>{b.payment_status ?? 'pending'}</span>
+                        b.payment_status?.toUpperCase() === 'PAID' ? 'bg-[#edf4ed] text-[#4e8068]' : 'bg-[#f5f0e9] text-[#6e5a3c]'
+                      }`}>{b.payment_status ?? 'PENDING'}</span>
                     </td>
                   </tr>
                 ))}

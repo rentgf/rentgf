@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 
 type CompanionRow = {
   id: string
+  profile_id: string
   bio: string | null
   city: string | null
   starting_price: number | null
@@ -33,9 +34,12 @@ export default function AdminCompanionsPage() {
     const supabase = createClient()
     // `companion_profiles` has no `is_approved` column. Review state lives in
     // `verification_status` (not_submitted | pending | approved | rejected | suspended).
+    // `profile_id` is the FK back to `profiles.id` and is required to update the
+    // linked profile's role and to send notifications (both keyed by profiles.id,
+    // which is NOT the same as this companion_profiles row's own `id`).
     const { data } = await supabase
       .from('companion_profiles')
-      .select('id, bio, city, starting_price, categories, verification_status, is_visible, created_at, profiles!inner(display_name, email, profile_photo_url)')
+      .select('id, profile_id, bio, city, starting_price, categories, verification_status, is_visible, created_at, profiles!inner(display_name, email, profile_photo_url)')
       .order('created_at', { ascending: false })
     if (data) {
       setCompanions(data.map((row) => {
@@ -52,9 +56,9 @@ export default function AdminCompanionsPage() {
     setProcessing(companion.id)
     const supabase = createClient()
     await supabase.from('companion_profiles').update({ verification_status: 'approved', is_visible: true }).eq('id', companion.id)
-    await supabase.from('profiles').update({ role: 'companion' }).eq('id', companion.id)
+    await supabase.from('profiles').update({ role: 'companion' }).eq('id', companion.profile_id)
     await supabase.from('notifications').insert({
-      profile_id: companion.id,
+      profile_id: companion.profile_id,
       type: 'verification',
       title: 'Application approved!',
       body: 'Congratulations! Your companion profile is now live on RentGF.',
@@ -74,9 +78,9 @@ export default function AdminCompanionsPage() {
     setProcessing(companion.id)
     const supabase = createClient()
     await supabase.from('companion_profiles').update({ verification_status: 'rejected', is_visible: false }).eq('id', companion.id)
-    await supabase.from('profiles').update({ role: 'customer' }).eq('id', companion.id)
+    await supabase.from('profiles').update({ role: 'customer' }).eq('id', companion.profile_id)
     await supabase.from('notifications').insert({
-      profile_id: companion.id,
+      profile_id: companion.profile_id,
       type: 'verification',
       title: 'Application not approved',
       body: 'Thank you for applying. Unfortunately we are unable to approve your profile at this time.',

@@ -13,7 +13,7 @@ type Stats = {
 
 export default function AdminOverviewPage() {
   const [stats, setStats] = useState<Stats | null>(null)
-  const [recentBookings, setRecentBookings] = useState<{ id: string; status: string; total_amount: number | null; created_at: string | null }[]>([])
+  const [recentBookings, setRecentBookings] = useState<{ id: string; status: string; final_price: number | null; created_at: string | null }[]>([])
 
   useEffect(() => {
     async function load() {
@@ -25,7 +25,8 @@ export default function AdminOverviewPage() {
         supabase.from('companion_profiles').select('id', { count: 'exact', head: true }).eq('verification_status', 'pending'),
         supabase.from('bookings').select('id', { count: 'exact', head: true }),
         supabase.from('bookings').select('id', { count: 'exact', head: true }).eq('status', 'confirmed'),
-        supabase.from('bookings').select('id, status, total_amount, created_at').order('created_at', { ascending: false }).limit(5),
+        // `total_amount` is not a reliable value here; `final_price` is the actual charged amount.
+        supabase.from('bookings').select('id, status, final_price, created_at').order('created_at', { ascending: false }).limit(5),
       ])
       setStats({
         totalUsers: usersRes.count ?? 0,
@@ -88,7 +89,7 @@ export default function AdminOverviewPage() {
                         'bg-[#f5f0e9] text-[#6e5a3c]'
                       }`}>{b.status}</span>
                     </td>
-                    <td className="px-4 py-3">{b.total_amount ? `₹${b.total_amount.toLocaleString('en-IN')}` : '—'}</td>
+                    <td className="px-4 py-3">{b.final_price ? `₹${b.final_price.toLocaleString('en-IN')}` : '—'}</td>
                     <td className="px-4 py-3 text-[#738078]">{b.created_at ? new Date(b.created_at).toLocaleDateString() : '—'}</td>
                   </tr>
                 ))}
