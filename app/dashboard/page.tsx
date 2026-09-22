@@ -12,7 +12,7 @@ type Booking = {
   status: string
   scheduled_date: string | null
   scheduled_time: string | null
-  total_amount: number | null
+  final_price: number | null
   companion_profile_id: string
   created_at: string | null
 }
@@ -33,7 +33,8 @@ export default function DashboardPage() {
 
       const [profileResult, bookingsResult, favsResult, notifsResult] = await Promise.all([
         supabase.from('profiles').select('display_name, full_name').eq('id', user.id).single(),
-        supabase.from('bookings').select('id, status, scheduled_date, scheduled_time, total_amount, companion_profile_id, created_at').eq('customer_profile_id', user.id).order('created_at', { ascending: false }).limit(5),
+        // `bookings` has no `total_amount` column — the real column is `final_price`.
+        supabase.from('bookings').select('id, status, scheduled_date, scheduled_time, final_price, companion_profile_id, created_at').eq('customer_profile_id', user.id).order('created_at', { ascending: false }).limit(5),
         supabase.from('favorites').select('id', { count: 'exact', head: true }).eq('customer_profile_id', user.id),
         supabase.from('notifications').select('id', { count: 'exact', head: true }).eq('profile_id', user.id).eq('is_read', false),
       ])
@@ -104,8 +105,8 @@ export default function DashboardPage() {
                           {booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
                         </span>
                       </div>
-                      {booking.total_amount && (
-                        <p className="mt-2 text-sm text-[#738078]">₹{booking.total_amount.toLocaleString('en-IN')}</p>
+                      {booking.final_price && (
+                        <p className="mt-2 text-sm text-[#738078]">₹{booking.final_price.toLocaleString('en-IN')}</p>
                       )}
                     </div>
                   ))}
