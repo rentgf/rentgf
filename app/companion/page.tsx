@@ -15,9 +15,8 @@ type CompanionData = {
   review_count: number | null
   categories: string[] | null
   languages: string[] | null
-  is_approved: boolean | null
+  verification_status: string | null
   is_visible: boolean | null
-  availability_status: string | null
   profile_photo_url: string | null
   display_name: string | null
   email: string | null
@@ -48,10 +47,14 @@ export default function CompanionDashboardPage() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) { router.push('/login?redirectTo=/companion'); return }
 
+    // `companion_profiles` is keyed by its own `id`, linked to the user via
+    // `profile_id` (not `id`). It also has no `is_approved`/`review_count`/
+    // `availability_status` columns — the real columns are
+    // `verification_status`/`total_reviews`, and visibility is `is_visible`.
     const { data: cp } = await supabase
       .from('companion_profiles')
-      .select('id, bio, city, starting_price, avg_rating, review_count, categories, languages, is_approved, is_visible, availability_status, profiles!inner(display_name, email, profile_photo_url)')
-      .eq('id', user.id)
+      .select('id, bio, city, starting_price, avg_rating, total_reviews, categories, languages, verification_status, is_visible, profiles!inner(display_name, email, profile_photo_url)')
+      .eq('profile_id', user.id)
       .single()
 
     if (!cp) {
@@ -63,9 +66,8 @@ export default function CompanionDashboardPage() {
     const p = cp.profiles as unknown as { display_name: string | null; email: string | null; profile_photo_url: string | null }
     const mapped: CompanionData = {
       id: cp.id, bio: cp.bio, city: cp.city, starting_price: cp.starting_price,
-      avg_rating: cp.avg_rating, review_count: cp.review_count, categories: cp.categories,
-      languages: cp.languages, is_approved: cp.is_approved, is_visible: cp.is_visible,
-      availability_status: cp.availability_status,
+      avg_rating: cp.avg_rating, review_count: cp.total_reviews, categories: cp.categories,
+      languages: cp.languages, verification_status: cp.verification_status, is_visible: cp.is_visible,
       profile_photo_url: p.profile_photo_url, display_name: p.display_name, email: p.email,
     }
     setData(mapped)
@@ -89,6 +91,8 @@ export default function CompanionDashboardPage() {
     setSaving(true)
     setSaveMsg('')
     const supabase = createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) { setSaving(false); return }
     const [cpResult, pResult] = await Promise.all([
       supabase.from('companion_profiles').update({
         bio, city,
@@ -96,7 +100,7 @@ export default function CompanionDashboardPage() {
         categories,
         languages,
       }).eq('id', data.id),
-      supabase.from('profiles').update({ profile_photo_url: photoUrl || null }).eq('id', data.id),
+      supabase.from('profiles').update({ profile_photo_url: photoUrl || null }).eq('id', user.id),
     ])
     if (cpResult.error || pResult.error) {
       setSaveMsg('Error saving. Please try again.')
@@ -112,9 +116,11 @@ export default function CompanionDashboardPage() {
   async function toggleAvailability() {
     if (!data) return
     const supabase = createClient()
-    const newStatus = data.availability_status === 'available' ? 'unavailable' : 'available'
-    await supabase.from('companion_profiles').update({ availability_status: newStatus }).eq('id', data.id)
-    setData({ ...data, availability_status: newStatus })
+    // `companion_profiles` has no `availability_status` column — visibility on
+    // the discover page is controlled by `is_visible`.
+    const newVisible = !data.is_visible
+    await supabase.from('companion_profiles').update({ is_visible: newVisible }).eq('id', data.id)
+    setData({ ...data, is_visible: newVisible })
   }
 
   async function signOut() {
@@ -137,6 +143,8 @@ export default function CompanionDashboardPage() {
 
   if (!data) return null
 
+  const isApproved = data.verification_status === 'approved'
+
   return (
     <main className="min-h-screen bg-[#fbfaf7] pb-16 text-[#173f35]">
       <header className="sticky top-0 z-10 border-b border-[#eee9e2] bg-[#fbfaf7]/95 backdrop-blur">
@@ -154,7 +162,7 @@ export default function CompanionDashboardPage() {
       <div className="mx-auto max-w-2xl space-y-4 px-4 pt-6">
 
         {/* Status banner */}
-        {!data.is_approved && (
+        {!isApproved && (
           <div className="flex items-start gap-3 rounded-2xl bg-[#fff8ed] border border-[#f0d9b5] p-4">
             <Clock className="mt-0.5 size-5 shrink-0 text-[#c47d2a]" />
             <div>
@@ -163,7 +171,7 @@ export default function CompanionDashboardPage() {
             </div>
           </div>
         )}
-        {data.is_approved && (
+        {isApproved && (
           <div className="flex items-center gap-3 rounded-2xl bg-[#edf4ee] border border-[#cce3cc] p-4">
             <CheckCircle2 className="size-5 shrink-0 text-[#4e8068]" />
             <p className="font-semibold text-[#4e8068]">Profile approved and live!</p>
@@ -206,7 +214,7 @@ export default function CompanionDashboardPage() {
           </div>
 
           {/* Stats */}
-          {data.is_approved && !editing && (
+          {isApproved && !editing && (
             <div className="mt-5 grid grid-cols-3 divide-x divide-[#f0ebe4] rounded-xl bg-[#f5f3ef] text-center">
               {[
                 ['₹' + (data.starting_price ?? 0).toLocaleString('en-IN'), 'per hour'],
@@ -222,18 +230,18 @@ export default function CompanionDashboardPage() {
           )}
 
           {/* Availability toggle */}
-          {data.is_approved && !editing && (
+          {isApproved && !editing && (
             <div className="mt-4 flex items-center justify-between rounded-xl bg-[#f5f3ef] px-4 py-3">
               <div>
                 <p className="text-sm font-semibold">Availability</p>
-                <p className="text-xs text-[#8a9490]">{data.availability_status === 'available' ? 'You are visible to customers' : 'You are hidden from discover'}</p>
+                <p className="text-xs text-[#8a9490]">{data.is_visible ? 'You are visible to customers' : 'You are hidden from discover'}</p>
               </div>
               <button
                 type="button"
                 onClick={toggleAvailability}
-                className={`relative h-6 w-11 rounded-full transition-colors ${data.availability_status === 'available' ? 'bg-[#4e8068]' : 'bg-[#d5d5d5]'}`}
+                className={`relative h-6 w-11 rounded-full transition-colors ${data.is_visible ? 'bg-[#4e8068]' : 'bg-[#d5d5d5]'}`}
               >
-                <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${data.availability_status === 'available' ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${data.is_visible ? 'translate-x-5' : 'translate-x-0.5'}`} />
               </button>
             </div>
           )}
@@ -339,7 +347,7 @@ export default function CompanionDashboardPage() {
         )}
 
         {/* View public profile */}
-        {data.is_approved && !editing && (
+        {isApproved && !editing && (
           <Link href={`/companions/${data.id}`} className="flex items-center justify-center gap-2 rounded-2xl border border-[#cce3cc] bg-[#f4faf4] py-3.5 text-sm font-semibold text-[#4e8068]">
             View my public profile →
           </Link>
