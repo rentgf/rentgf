@@ -20,7 +20,9 @@ export default function AdminOverviewPage() {
       const supabase = createClient()
       const [usersRes, pendingRes, bookingsRes, confirmedRes, recentRes] = await Promise.all([
         supabase.from('profiles').select('id', { count: 'exact', head: true }),
-        supabase.from('companion_profiles').select('id', { count: 'exact', head: true }).eq('is_approved', false),
+        // `companion_profiles` has no `is_approved` column. Pending review state is
+        // tracked via `verification_status` (not_submitted | pending | approved | rejected | suspended).
+        supabase.from('companion_profiles').select('id', { count: 'exact', head: true }).eq('verification_status', 'pending'),
         supabase.from('bookings').select('id', { count: 'exact', head: true }),
         supabase.from('bookings').select('id', { count: 'exact', head: true }).eq('status', 'confirmed'),
         supabase.from('bookings').select('id, status, total_amount, created_at').order('created_at', { ascending: false }).limit(5),
