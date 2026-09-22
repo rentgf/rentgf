@@ -8,5 +8,5 @@ export function isAdminRequest(req: NextRequest): boolean {
 }
 
 export function adminGuardResponse(): NextResponse {
-  return NextResponse.redirect(new URL('/admin/login', process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000'))
+  return NextResponse.redirect(new URL('/aryanbloch/login', process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000'))
 }

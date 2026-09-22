@@ -1,28 +1,102 @@
 'use client'
 
-import Link from 'next/link'
-import { FormEvent, useState } from 'react'
-import { Activity, AlertTriangle, ArrowUpRight, Bot, Building2, CalendarDays, ChevronRight, CircleDollarSign, FileCheck2, LayoutDashboard, MessageSquare, Settings, ShieldCheck, Users, WalletCards } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { BookOpen, CheckCircle2, Clock, Users } from 'lucide-react'
+import { createClient } from '@/lib/supabase/client'
 
-const navigation = [
-  ['Overview', '/aryanbloch', LayoutDashboard], ['Users', '/aryanbloch/users', Users], ['Companions', '/aryanbloch/companions', Building2], ['Verification', '/aryanbloch/verification', FileCheck2], ['Bookings', '/aryanbloch/bookings', CalendarDays], ['Payments', '/aryanbloch/payments', CircleDollarSign], ['Payouts', '/aryanbloch/payouts', WalletCards], ['Reports', '/aryanbloch/reports', AlertTriangle], ['Reviews', '/aryanbloch/reviews', MessageSquare], ['Automated bot', '/aryanbloch/bot', Bot], ['Settings', '/aryanbloch/settings', Settings],
-] as const
+type Stats = {
+  totalUsers: number
+  pendingCompanions: number
+  totalBookings: number
+  confirmedBookings: number
+}
 
-const stats = [
-  ['Total users', 'Not connected', 'Live data required', Users],
-  ['Active companions', 'Not connected', 'Live data required', ShieldCheck],
-  ['Pending verification', 'Not connected', 'Live data required', FileCheck2],
-  ['Platform revenue', 'Not connected', 'Live data required', CircleDollarSign],
-] as const
+export default function AdminOverviewPage() {
+  const [stats, setStats] = useState<Stats | null>(null)
+  const [recentBookings, setRecentBookings] = useState<{ id: string; status: string; total_amount: number | null; created_at: string | null }[]>([])
 
-export default function AdminPage() {
-  const [unlocked, setUnlocked] = useState(false)
-  const [code, setCode] = useState('')
-  const [error, setError] = useState('')
-  function unlock(event: FormEvent<HTMLFormElement>) { event.preventDefault(); if (code === 'preview-admin') setUnlocked(true); else setError('Use the preview code: preview-admin') }
-  if (!unlocked) return <main className="flex min-h-screen items-center justify-center bg-[#f5f7f3] px-4"><form onSubmit={unlock} className="w-full max-w-sm rounded-3xl border border-[#e5ebe5] bg-white p-7 shadow-sm"><p className="text-sm font-semibold uppercase tracking-[.18em] text-[#c36d4d]">Private workspace</p><h1 className="mt-3 text-3xl font-semibold tracking-[-.05em]">Admin access</h1><p className="mt-3 text-sm leading-6 text-[#68756e]">Preview protection is active. This is not production authentication.</p><label className="mt-6 block text-sm font-medium">Preview code<input value={code} onChange={(event) => setCode(event.target.value)} className="mt-2 w-full rounded-xl border border-[#dce5dd] px-4 py-3 outline-none focus:border-[#173f35]" type="password" /></label>{error && <p className="mt-3 text-sm text-[#b24f3c]">{error}</p>}<button className="mt-6 w-full rounded-full bg-[#173f35] px-5 py-3 text-sm font-semibold text-white">Open workspace</button><Link href="/" className="mt-4 block text-center text-sm text-[#68756e]">Exit</Link></form></main>
-  return <main className="min-h-screen bg-[#f5f7f3] text-[#173f35]"><div className="mx-auto flex min-h-screen max-w-[1500px]">
-    <aside className="hidden w-64 shrink-0 border-r border-[#e5ebe5] bg-white p-5 lg:block"><Link href="/" className="flex items-center gap-2 px-2 text-xl font-semibold tracking-[-.05em]"><span className="brand-mark"><span /></span> rent<span className="text-[#d17b58]">gf</span></Link><p className="mt-10 px-3 text-[10px] font-bold uppercase tracking-[.2em] text-[#87948b]">Workspace</p><nav className="mt-3 flex flex-col gap-1">{navigation.map(([label, href, Icon]) => <Link key={label} href={href} className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium ${label === 'Overview' ? 'bg-[#edf4ed] text-[#173f35]' : 'text-[#68756e] hover:bg-[#f6f8f5]'}`}><Icon className="size-4" />{label}</Link>)}</nav><Link href="/" className="mt-10 flex items-center gap-2 px-3 text-sm text-[#68756e]"><ArrowUpRight className="size-4" />Exit admin</Link></aside>
-    <section className="min-w-0 flex-1 px-4 py-5 sm:px-6 lg:px-10 lg:py-8"><header className="flex items-center justify-between"><div><p className="text-sm font-semibold uppercase tracking-[.18em] text-[#c36d4d]">Admin workspace</p><h1 className="mt-2 text-3xl font-semibold tracking-[-.06em] sm:text-4xl">Platform overview</h1></div><Link href="/" className="rounded-full border border-[#dce5dd] bg-white px-4 py-2 text-sm font-semibold lg:hidden">Exit</Link></header><div className="mt-7 flex gap-3 rounded-2xl border border-[#f0d7b8] bg-[#fff8ed] p-4 text-sm text-[#795b37]"><AlertTriangle className="size-5 shrink-0" /><p>Preview mode is active. Admin actions update only this browser and do not affect real users, payments, or payouts.</p></div><div className="mt-7 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">{stats.map(([label, value, note, Icon]) => <div key={label} className="rounded-2xl border border-[#e5ebe5] bg-white p-5"><Icon className="size-5 text-[#c36d4d]" /><p className="mt-5 text-sm text-[#68756e]">{label}</p><p className="mt-1 text-xl font-semibold">{value}</p><p className="mt-1 text-xs text-[#9aa59d]">{note}</p></div>)}</div><div className="mt-8 grid gap-6 xl:grid-cols-[1.4fr_1fr]"><section className="rounded-2xl border border-[#e5ebe5] bg-white p-5"><div className="flex items-center justify-between"><div><h2 className="font-semibold">Operations</h2><p className="mt-1 text-sm text-[#68756e]">Manage the marketplace from one place.</p></div><Activity className="size-5 text-[#c36d4d]" /></div><div className="mt-5 grid gap-2 sm:grid-cols-2">{navigation.filter(([label]) => label !== 'Overview').map(([label, href, Icon]) => <Link key={label} href={href} className="flex items-center justify-between rounded-xl border border-[#edf0eb] px-4 py-3 text-sm font-medium transition hover:border-[#bdd2c7] hover:bg-[#f8fbf7]"><span className="flex items-center gap-3"><Icon className="size-4 text-[#c36d4d]" />{label}</span><ChevronRight className="size-4 text-[#a3afa7]" /></Link>)}</div></section><section className="rounded-2xl border border-[#e5ebe5] bg-white p-5"><h2 className="font-semibold">System status</h2><div className="mt-5 flex flex-col gap-3">{['Authentication provider', 'Database', 'Payment provider', 'File storage', 'Realtime messaging'].map((item) => <div key={item} className="flex items-center justify-between border-b border-[#edf0eb] pb-3 text-sm last:border-0"><span className="text-[#68756e]">{item}</span><span className="rounded-full bg-[#fff3ed] px-2.5 py-1 text-xs font-semibold text-[#a04f39]">Not connected</span></div>)}</div><Link href="/aryanbloch/settings" className="mt-4 inline-flex text-sm font-semibold text-[#315f50]">View settings <ChevronRight className="ml-1 size-4" /></Link></section></div></section>
-  </div></main>
+  useEffect(() => {
+    async function load() {
+      const supabase = createClient()
+      const [usersRes, pendingRes, bookingsRes, confirmedRes, recentRes] = await Promise.all([
+        supabase.from('profiles').select('id', { count: 'exact', head: true }),
+        // `companion_profiles` has no `is_approved` column. Pending review state is
+        // tracked via `verification_status` (not_submitted | pending | approved | rejected | suspended).
+        supabase.from('companion_profiles').select('id', { count: 'exact', head: true }).eq('verification_status', 'pending'),
+        supabase.from('bookings').select('id', { count: 'exact', head: true }),
+        supabase.from('bookings').select('id', { count: 'exact', head: true }).eq('status', 'confirmed'),
+        supabase.from('bookings').select('id, status, total_amount, created_at').order('created_at', { ascending: false }).limit(5),
+      ])
+      setStats({
+        totalUsers: usersRes.count ?? 0,
+        pendingCompanions: pendingRes.count ?? 0,
+        totalBookings: bookingsRes.count ?? 0,
+        confirmedBookings: confirmedRes.count ?? 0,
+      })
+      setRecentBookings(recentRes.data ?? [])
+    }
+    load()
+  }, [])
+
+  const cards = [
+    { label: 'Total users', value: stats?.totalUsers ?? '…', icon: Users, color: 'text-[#4e8068]', bg: 'bg-[#edf4ed]' },
+    { label: 'Pending companions', value: stats?.pendingCompanions ?? '…', icon: Clock, color: 'text-[#c36d4d]', bg: 'bg-[#fff3ed]' },
+    { label: 'Total bookings', value: stats?.totalBookings ?? '…', icon: BookOpen, color: 'text-[#173f35]', bg: 'bg-[#e9f0e9]' },
+    { label: 'Confirmed bookings', value: stats?.confirmedBookings ?? '…', icon: CheckCircle2, color: 'text-[#4e8068]', bg: 'bg-[#edf4ed]' },
+  ]
+
+  return (
+    <div className="p-6">
+      <h1 className="text-2xl font-semibold text-[#173f35]">Overview</h1>
+      <p className="mt-1 text-sm text-[#68756e]">Platform stats at a glance.</p>
+
+      <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {cards.map(({ label, value, icon: Icon, color, bg }) => (
+          <div key={label} className="rounded-2xl border border-[#e9e2d9] bg-white p-5">
+            <div className={`flex size-10 items-center justify-center rounded-full ${bg}`}>
+              <Icon className={`size-5 ${color}`} />
+            </div>
+            <p className="mt-4 text-2xl font-semibold">{value}</p>
+            <p className="mt-1 text-sm text-[#68756e]">{label}</p>
+          </div>
+        ))}
+      </div>
+
+      <div className="mt-8">
+        <h2 className="font-semibold text-[#173f35]">Recent bookings</h2>
+        <div className="mt-3 overflow-hidden rounded-2xl border border-[#e9e2d9] bg-white">
+          {recentBookings.length === 0 ? (
+            <p className="p-6 text-sm text-[#68756e]">No bookings yet.</p>
+          ) : (
+            <table className="w-full text-sm">
+              <thead className="border-b border-[#f0ebe4] bg-[#faf8f5] text-xs font-semibold uppercase tracking-wider text-[#89958d]">
+                <tr>
+                  <th className="px-4 py-3 text-left">Booking ID</th>
+                  <th className="px-4 py-3 text-left">Status</th>
+                  <th className="px-4 py-3 text-left">Amount</th>
+                  <th className="px-4 py-3 text-left">Date</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[#f5f1ec]">
+                {recentBookings.map((b) => (
+                  <tr key={b.id}>
+                    <td className="px-4 py-3 font-mono text-xs text-[#52645b]">{b.id.slice(0, 8)}…</td>
+                    <td className="px-4 py-3">
+                      <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
+                        b.status === 'confirmed' ? 'bg-[#edf4ed] text-[#4e8068]' :
+                        b.status === 'pending' ? 'bg-[#fff8ed] text-[#8c5c2a]' :
+                        'bg-[#f5f0e9] text-[#6e5a3c]'
+                      }`}>{b.status}</span>
+                    </td>
+                    <td className="px-4 py-3">{b.total_amount ? `₹${b.total_amount.toLocaleString('en-IN')}` : '—'}</td>
+                    <td className="px-4 py-3 text-[#738078]">{b.created_at ? new Date(b.created_at).toLocaleDateString() : '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </div>
+    </div>
+  )
 }

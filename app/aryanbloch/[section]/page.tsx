@@ -3,12 +3,9 @@ import { ArrowLeft, CheckCircle2, LockKeyhole } from 'lucide-react'
 
 const titles: Record<string, { title: string; description: string }> = {
   users: { title: 'Users', description: 'Review customer accounts and account status.' },
-  companions: { title: 'Companions', description: 'Manage public companion profiles and activity.' },
   verification: { title: 'Verification', description: 'Review pending identity checks privately.' },
-  bookings: { title: 'Bookings', description: 'Monitor booking lifecycle and disputes.' },
   payments: { title: 'Payments', description: 'Review payment records and provider status.' },
   payouts: { title: 'Payouts', description: 'Manage payout eligibility and processing.' },
-  reports: { title: 'Reports', description: 'Investigate safety and community reports.' },
   reviews: { title: 'Reviews', description: 'Moderate reviews after completed bookings.' },
   settings: { title: 'Platform settings', description: 'Configure fees, policies, and connected services.' },
 }
