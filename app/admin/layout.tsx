@@ -2,12 +2,13 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { BarChart2, BookOpen, LogOut, Settings, ShieldCheck, Users } from 'lucide-react'
+import { BarChart2, BookOpen, LogOut, Mail, Settings, ShieldCheck, Users } from 'lucide-react'
 
 const NAV = [
   { href: '/admin', label: 'Overview', icon: BarChart2 },
   { href: '/admin/companions', label: 'Companions', icon: Users },
   { href: '/admin/bookings', label: 'Bookings', icon: BookOpen },
+  { href: '/admin/emails', label: 'Emails', icon: Mail },
   { href: '/admin/reports', label: 'Reports', icon: Settings },
 ]
 
@@ -19,7 +20,6 @@ async function signOut() {
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
 
-  // Don't wrap the login page
   if (pathname === '/admin/login') return <>{children}</>
 
   return (
