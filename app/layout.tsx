@@ -7,6 +7,8 @@ const SITE_NAME = 'RentGF'
 const TITLE = 'RentGF — Verified Social Companion App in India'
 const DESCRIPTION =
   'Book verified female companions for coffee, dining, travel, and events across Delhi, Mumbai, Bengaluru, Hyderabad and more. Safe, lawful, non-sexual companionship. 18+.'
+// Social share preview image (logo banner), hosted on CDN.
+const OG_IMAGE = 'https://hercules-cdn.com/file_5dWAanG7BPC5VSnVh4fErz6N'
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -53,9 +55,9 @@ export const metadata: Metadata = {
     type: 'website',
     images: [
       {
-        url: `${SITE_URL}/og-image.jpg`,
+        url: OG_IMAGE,
         width: 1200,
-        height: 630,
+        height: 675,
         alt: 'RentGF — Verified Social Companions in India',
       },
     ],
@@ -64,7 +66,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: TITLE,
     description: DESCRIPTION,
-    images: [`${SITE_URL}/og-image.jpg`],
+    images: [OG_IMAGE],
     site: '@rentgf_in',
   },
   robots: {
