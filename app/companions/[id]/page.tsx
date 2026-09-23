@@ -5,9 +5,11 @@ import { use, useEffect, useState } from 'react'
 import { ArrowLeft, CalendarDays, Heart, MapPin, MessageCircle, ShieldCheck, Star } from 'lucide-react'
 import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { ReportBlockActions } from '@/components/report-block-actions'
 
 type CompanionDetail = {
   id: string
+  profile_id: string
   bio: string | null
   city: string | null
   starting_price: number | null
@@ -45,7 +47,7 @@ export default function CompanionProfilePage({ params }: { params: Promise<{ id:
       // the real column is `total_reviews`.
       const { data } = await supabase
         .from('companion_profiles')
-        .select('id, bio, city, starting_price, avg_rating, total_reviews, categories, interests, languages, profiles!inner(display_name, profile_photo_url, date_of_birth)')
+        .select('id, profile_id, bio, city, starting_price, avg_rating, total_reviews, categories, interests, languages, profiles!inner(display_name, profile_photo_url, date_of_birth)')
         .eq('id', id)
         .eq('is_visible', true)
         .single()
@@ -60,6 +62,7 @@ export default function CompanionProfilePage({ params }: { params: Promise<{ id:
 
       setPerson({
         id: data.id,
+        profile_id: data.profile_id,
         bio: data.bio,
         city: data.city,
         starting_price: data.starting_price,
@@ -95,7 +98,7 @@ export default function CompanionProfilePage({ params }: { params: Promise<{ id:
         setUserId(user.id)
         const [favResult, bookingResult] = await Promise.all([
           supabase.from('favorites').select('id').eq('customer_profile_id', user.id).eq('companion_profile_id', id).maybeSingle(),
-          supabase.from('bookings').select('id').eq('customer_profile_id', user.id).eq('companion_profile_id', id).maybeSingle(),
+          supabase.from('bookings').select('id').eq('customer_profile_id', user.id).eq('companion_profile_id', id).limit(1).maybeSingle(),
         ])
         setIsSaved(!!favResult.data)
         setHasBooking(!!bookingResult.data)
@@ -132,6 +135,8 @@ export default function CompanionProfilePage({ params }: { params: Promise<{ id:
   }
 
   if (person === null) notFound()
+
+  const isOwnProfile = userId === person.profile_id
 
   return (
     <main className="min-h-screen bg-[#fbfaf7] pb-10 text-[#173f35]">
@@ -273,6 +278,10 @@ export default function CompanionProfilePage({ params }: { params: Promise<{ id:
                 ))}
               </div>
             </div>
+          )}
+
+          {!isOwnProfile && (
+            <ReportBlockActions companionId={person.id} companionProfileId={person.profile_id} name={person.display_name ?? 'companion'} />
           )}
         </section>
       </div>
