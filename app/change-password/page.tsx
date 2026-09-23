@@ -1,10 +1,10 @@
 'use client'
 
-import Link from 'next/link'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { CheckCircle2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import { Logo } from '@/components/logo'
 
 export default function ChangePasswordPage() {
   const router = useRouter()
@@ -30,7 +30,7 @@ export default function ChangePasswordPage() {
   return (
     <main className="flex min-h-screen items-center justify-center bg-[#fbfaf7] px-4 py-10">
       <div className="w-full max-w-md rounded-3xl border border-[#e9e2d9] bg-white p-6 shadow-sm sm:p-8">
-        <Link href="/" className="text-lg font-semibold text-[#173f35]">rent<span className="text-[#d17b58]">gf</span></Link>
+        <Logo className="w-fit" />
         <h1 className="mt-10 text-3xl font-semibold tracking-[-.04em] text-[#173f35]">New password</h1>
         {done ? (
           <div className="mt-8">

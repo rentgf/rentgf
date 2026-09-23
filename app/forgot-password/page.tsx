@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { Logo } from '@/components/logo'
 
 export default function ForgotPasswordPage() {
   const router = useRouter()
@@ -31,7 +32,7 @@ export default function ForgotPasswordPage() {
   return (
     <main className="flex min-h-screen items-center justify-center bg-[#fbfaf7] px-4 py-10">
       <div className="w-full max-w-md rounded-3xl border border-[#e9e2d9] bg-white p-6 shadow-sm sm:p-8">
-        <Link href="/" className="text-lg font-semibold text-[#173f35]">rent<span className="text-[#d17b58]">gf</span></Link>
+        <Logo className="w-fit" />
         <h1 className="mt-10 text-3xl font-semibold tracking-[-.04em] text-[#173f35]">Reset password</h1>
         <p className="mt-2 text-sm leading-6 text-[#68756e]">Enter your email and we will send you a reset link.</p>
         {sent ? (
