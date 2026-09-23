@@ -175,7 +175,7 @@ export default function CompanionDashboardPage() {
             <Clock className="mt-0.5 size-5 shrink-0 text-[#c47d2a]" />
             <div>
               <p className="font-semibold text-[#8c5c2a]">Application under review</p>
-              <p className="mt-1 text-sm text-[#745b35]">Our team will review your profile within 48 hours. You will receive an email when approved.</p>
+              <p className="mt-1 text-sm text-[#745b35]">Our team will review your profile within 48 hours. Submit your ID on the <Link href="/companion/verification" className="font-semibold underline">verification page</Link> to speed this up.</p>
             </div>
           </div>
         )}
@@ -348,8 +348,8 @@ export default function CompanionDashboardPage() {
           <section className="rounded-[22px] border border-[#e9e2d9] bg-white divide-y divide-[#f5f1ec]">
             {[
               { icon: BookOpen, label: 'Booking requests', sub: pendingCount > 0 ? `${pendingCount} waiting for your response` : 'Manage pending & accepted bookings', href: '/companion/bookings' },
-              { icon: CircleDollarSign, label: 'Earnings', sub: 'View your payout history', href: '/dashboard' },
-              { icon: ShieldCheck, label: 'Verification', sub: 'ID & document status', href: '/settings' },
+              { icon: CircleDollarSign, label: 'Earnings', sub: 'Earnings per booking (after 15% fee)', href: '/companion/bookings' },
+              { icon: ShieldCheck, label: 'Verification', sub: 'ID & document status', href: '/companion/verification' },
             ].map(({ icon: Icon, label, sub, href }) => (
               <Link key={label} href={href} className="flex items-center gap-4 px-5 py-4">
                 <div className="flex size-9 items-center justify-center rounded-full bg-[#f5f3ef]">
