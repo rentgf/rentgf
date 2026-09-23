@@ -28,6 +28,8 @@ type Conversation = {
   companion_profile_id: string
   customer_profile_id: string
   last_message_at: string | null
+  companion_display_name: string | null
+  companion_photo_url: string | null
 }
 
 export default function MessagesPage() {
@@ -46,7 +48,6 @@ export default function MessagesPage() {
   const [sendError, setSendError] = useState('')
   const bottomRef = useRef<HTMLDivElement>(null)
 
-  // Load current user
   useEffect(() => {
     async function loadUser() {
       const supabase = createClient()
@@ -54,10 +55,9 @@ export default function MessagesPage() {
       if (!user) { router.push('/login?redirectTo=/messages'); return }
       setProfileId(user.id)
     }
-    loadUser()
+    void loadUser()
   }, [router])
 
-  // Load or create conversation if companionProfileId is given
   const loadConversation = useCallback(async () => {
     if (!profileId || !companionProfileId) return
     const supabase = createClient()
@@ -69,7 +69,6 @@ export default function MessagesPage() {
     if (cp) {
       const profiles = cp.profiles as unknown as { display_name: string | null; profile_photo_url: string | null }
       setCompanion({ companion_profile_id: cp.id, display_name: profiles.display_name, profile_photo_url: profiles.profile_photo_url, city: cp.city })
-      // Stop here if the user blocked this companion.
       const { data: block } = await supabase.from('blocks').select('id').eq('blocker_id', profileId).eq('blocked_id', cp.profile_id).maybeSingle()
       if (block) { setBlocked(true); setLoading(false); return }
     }
@@ -81,7 +80,6 @@ export default function MessagesPage() {
       .maybeSingle()
     let convId = existing?.id
     if (!convId) {
-      // Messaging unlocks only after a booking exists.
       const { data: booking } = await supabase
         .from('bookings')
         .select('id')
@@ -109,11 +107,9 @@ export default function MessagesPage() {
     setLoading(false)
   }, [profileId, companionProfileId])
 
-  // Load all conversations if no specific companion
   const loadAllConversations = useCallback(async () => {
     if (!profileId || companionProfileId) return
     const supabase = createClient()
-    // conversations.companion_profile_id references companion_profiles.id, not profiles.id.
     const [{ data: cp }, { data: blocks }] = await Promise.all([
       supabase.from('companion_profiles').select('id').eq('profile_id', profileId).maybeSingle(),
       supabase.from('blocks').select('blocked_id').eq('blocker_id', profileId),
@@ -123,7 +119,7 @@ export default function MessagesPage() {
       : `customer_profile_id.eq.${profileId}`
     const { data } = await supabase
       .from('conversations')
-      .select('id, companion_profile_id, customer_profile_id, last_message_at, companion_profiles!inner(profile_id)')
+      .select('id, companion_profile_id, customer_profile_id, last_message_at, companion_profiles!inner(profile_id, profiles!inner(display_name, profile_photo_url))')
       .or(filter)
       .order('last_message_at', { ascending: false })
     const blockedIds = new Set((blocks ?? []).map((b) => b.blocked_id))
@@ -131,31 +127,35 @@ export default function MessagesPage() {
       const other = (c.companion_profiles as unknown as { profile_id: string }).profile_id
       return !blockedIds.has(other) && !blockedIds.has(c.customer_profile_id)
     })
-    setConversations(visible.map(({ id, companion_profile_id, customer_profile_id, last_message_at }) => ({ id, companion_profile_id, customer_profile_id, last_message_at })))
+    setConversations(visible.map((c) => {
+      const cp2 = c.companion_profiles as unknown as { profile_id: string; profiles: { display_name: string | null; profile_photo_url: string | null } }
+      return {
+        id: c.id,
+        companion_profile_id: c.companion_profile_id,
+        customer_profile_id: c.customer_profile_id,
+        last_message_at: c.last_message_at,
+        companion_display_name: cp2?.profiles?.display_name ?? null,
+        companion_photo_url: cp2?.profiles?.profile_photo_url ?? null,
+      }
+    }))
     setLoading(false)
   }, [profileId, companionProfileId])
 
   useEffect(() => {
-    if (companionProfileId) loadConversation()
-    else loadAllConversations()
+    if (companionProfileId) void loadConversation()
+    else void loadAllConversations()
   }, [companionProfileId, loadConversation, loadAllConversations])
 
-  // Real-time messages subscription
   useEffect(() => {
     if (!conversationId) return
     const supabase = createClient()
     const channel = supabase
       .channel(`messages:${conversationId}`)
-      .on('postgres_changes', {
-        event: 'INSERT',
-        schema: 'public',
-        table: 'messages',
-        filter: `conversation_id=eq.${conversationId}`,
-      }, (payload) => {
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `conversation_id=eq.${conversationId}` }, (payload) => {
         setMessages((prev) => [...prev, payload.new as Message])
       })
       .subscribe()
-    return () => { supabase.removeChannel(channel) }
+    return () => { void supabase.removeChannel(channel) }
   }, [conversationId])
 
   useEffect(() => {
@@ -171,7 +171,6 @@ export default function MessagesPage() {
     const supabase = createClient()
     const { error } = await supabase.from('messages').insert({ conversation_id: conversationId, sender_id: profileId, content: cleanMessage })
     if (error) {
-      // The database rejects messages between blocked users.
       setSendError(error.message.includes('blocked') ? 'You can no longer message in this conversation.' : 'Message not sent. Please try again.')
     } else {
       setDraft('')
@@ -203,11 +202,15 @@ export default function MessagesPage() {
                   href={`/messages?companion=${conv.companion_profile_id}`}
                   className="flex items-center gap-3 rounded-2xl border border-[#e9e2d9] bg-white p-4 hover:bg-[#f5f8f3]"
                 >
-                  <div className="flex size-10 items-center justify-center rounded-full bg-[#dce9dd] text-[#173f35]">
-                    <MessageCircle className="size-5" />
-                  </div>
+                  {conv.companion_photo_url ? (
+                    <img src={conv.companion_photo_url} alt="" className="size-10 rounded-full object-cover" />
+                  ) : (
+                    <div className="flex size-10 items-center justify-center rounded-full bg-[#dce9dd] font-semibold text-[#173f35]">
+                      {conv.companion_display_name?.[0] ?? '?'}
+                    </div>
+                  )}
                   <div className="min-w-0 flex-1">
-                    <p className="truncate font-semibold text-[#173f35]">Conversation</p>
+                    <p className="truncate font-semibold text-[#173f35]">{conv.companion_display_name ?? 'Companion'}</p>
                     <p className="truncate text-xs text-[#738078]">
                       {conv.last_message_at ? new Date(conv.last_message_at).toLocaleDateString() : 'No messages yet'}
                     </p>
