@@ -5,7 +5,8 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { BookOpen, Camera, CheckCircle2, ChevronRight, CircleDollarSign, Clock, LogOut, Pencil, ShieldCheck, Star } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
-import { Logo } from '@/components/logo'
+import { MobileShell } from '@/components/mobile-shell'
+import { clearRoleCache } from '@/lib/use-role'
 
 type CompanionData = {
   id: string
@@ -26,6 +27,7 @@ type CompanionData = {
 const CATEGORIES = ['Coffee & conversation', 'Dining', 'Movies & events', 'Travel companion', 'Shopping', 'Fitness & outdoors', 'Study buddy', 'Gaming']
 const CITIES = ['Delhi', 'Mumbai', 'Bengaluru', 'Hyderabad', 'Chennai', 'Kolkata', 'Pune', 'Jaipur', 'Ahmedabad', 'Surat']
 const LANGUAGES = ['Hindi', 'English', 'Tamil', 'Telugu', 'Kannada', 'Bengali', 'Marathi', 'Gujarati']
+const PLATFORM_FEE_RATE = 0.15
 
 export default function CompanionDashboardPage() {
   const router = useRouter()
@@ -33,6 +35,8 @@ export default function CompanionDashboardPage() {
   const [loading, setLoading] = useState(true)
   const [editing, setEditing] = useState(false)
   const [pendingCount, setPendingCount] = useState(0)
+  const [upcomingCount, setUpcomingCount] = useState(0)
+  const [earnings, setEarnings] = useState(0)
 
   // Edit form state
   const [bio, setBio] = useState('')
@@ -50,9 +54,8 @@ export default function CompanionDashboardPage() {
     if (!user) { router.push('/login?redirectTo=/companion'); return }
 
     // `companion_profiles` is keyed by its own `id`, linked to the user via
-    // `profile_id` (not `id`). It also has no `is_approved`/`review_count`/
-    // `availability_status` columns — the real columns are
-    // `verification_status`/`total_reviews`, and visibility is `is_visible`.
+    // `profile_id` (not `id`). Review state is `verification_status`,
+    // reviews are `total_reviews`, and visibility is `is_visible`.
     const { data: cp } = await supabase
       .from('companion_profiles')
       .select('id, bio, city, starting_price, avg_rating, total_reviews, categories, languages, verification_status, is_visible, profiles!inner(display_name, email, profile_photo_url)')
@@ -65,12 +68,19 @@ export default function CompanionDashboardPage() {
       return
     }
 
-    const { count } = await supabase
+    const { data: bookingRows } = await supabase
       .from('bookings')
-      .select('id', { count: 'exact', head: true })
+      .select('status, final_price')
       .eq('companion_profile_id', cp.id)
-      .eq('status', 'pending')
-    setPendingCount(count ?? 0)
+      .in('status', ['pending', 'accepted', 'confirmed', 'completed'])
+      .limit(500)
+    const rows = (bookingRows ?? []) as { status: string; final_price: number | null }[]
+    setPendingCount(rows.filter((b) => b.status === 'pending').length)
+    setUpcomingCount(rows.filter((b) => b.status === 'accepted' || b.status === 'confirmed').length)
+    setEarnings(rows.filter((b) => b.status === 'completed').reduce((sum, b) => {
+      const total = b.final_price ?? 0
+      return sum + total - Math.round(total * PLATFORM_FEE_RATE)
+    }, 0))
 
     const p = cp.profiles as unknown as { display_name: string | null; email: string | null; profile_photo_url: string | null }
     const mapped: CompanionData = {
@@ -125,8 +135,6 @@ export default function CompanionDashboardPage() {
   async function toggleAvailability() {
     if (!data) return
     const supabase = createClient()
-    // `companion_profiles` has no `availability_status` column — visibility on
-    // the discover page is controlled by `is_visible`.
     const newVisible = !data.is_visible
     await supabase.from('companion_profiles').update({ is_visible: newVisible }).eq('id', data.id)
     setData({ ...data, is_visible: newVisible })
@@ -135,44 +143,46 @@ export default function CompanionDashboardPage() {
   async function signOut() {
     const supabase = createClient()
     await supabase.auth.signOut()
+    clearRoleCache()
     router.push('/')
   }
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-[#fbfaf7] px-4 py-8">
-        <div className="mx-auto max-w-2xl animate-pulse space-y-4">
+      <MobileShell title="Companion studio">
+        <main className="mx-auto max-w-2xl animate-pulse space-y-4 px-4 py-8">
           <div className="h-28 rounded-2xl bg-[#ede8e1]" />
           <div className="h-40 rounded-2xl bg-[#ede8e1]" />
           <div className="h-24 rounded-2xl bg-[#ede8e1]" />
-        </div>
-      </main>
+        </main>
+      </MobileShell>
     )
   }
 
   if (!data) return null
 
   const isApproved = data.verification_status === 'approved'
+  const firstName = data.display_name?.split(' ')[0] ?? 'there'
 
   return (
-    <main className="min-h-screen bg-[#fbfaf7] pb-16 text-[#173f35]">
-      <header className="sticky top-0 z-10 border-b border-[#eee9e2] bg-[#fbfaf7]/95 backdrop-blur">
-        <div className="mx-auto flex h-16 max-w-2xl items-center justify-between px-4">
-          <Logo />
-          <div className="flex items-center gap-3">
-            <span className="text-sm text-[#68756e]">Companion</span>
-            <button type="button" onClick={signOut} className="rounded-full border border-[#e4e9e1] p-2 text-[#68756e]">
-              <LogOut className="size-4" />
-            </button>
-          </div>
-        </div>
-      </header>
+    <MobileShell title="Companion studio">
+      <main className="mx-auto max-w-2xl space-y-4 px-4 pb-16 pt-6 text-[#173f35]">
 
-      <div className="mx-auto max-w-2xl space-y-4 px-4 pt-6">
+        {/* Greeting */}
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[.18em] text-[#d17b58]">Your studio</p>
+            <h1 className="mt-1 text-3xl font-semibold tracking-[-.04em]">Hi, {firstName}</h1>
+            <p className="mt-1 text-sm text-[#68756e]">Manage your requests, availability and earnings.</p>
+          </div>
+          <button type="button" onClick={signOut} aria-label="Sign out" className="rounded-full border border-[#e4e9e1] bg-white p-2.5 text-[#68756e]">
+            <LogOut className="size-4" />
+          </button>
+        </div>
 
         {/* Status banner */}
         {!isApproved && (
-          <div className="flex items-start gap-3 rounded-2xl bg-[#fff8ed] border border-[#f0d9b5] p-4">
+          <div className="flex items-start gap-3 rounded-2xl border border-[#f0d9b5] bg-[#fff8ed] p-4">
             <Clock className="mt-0.5 size-5 shrink-0 text-[#c47d2a]" />
             <div>
               <p className="font-semibold text-[#8c5c2a]">Application under review</p>
@@ -181,10 +191,26 @@ export default function CompanionDashboardPage() {
           </div>
         )}
         {isApproved && (
-          <div className="flex items-center gap-3 rounded-2xl bg-[#edf4ee] border border-[#cce3cc] p-4">
+          <div className="flex items-center gap-3 rounded-2xl border border-[#cce3cc] bg-[#edf4ee] p-4">
             <CheckCircle2 className="size-5 shrink-0 text-[#4e8068]" />
             <p className="font-semibold text-[#4e8068]">Profile approved and live!</p>
           </div>
+        )}
+
+        {/* Earnings overview */}
+        {!editing && (
+          <section className="grid grid-cols-3 gap-3">
+            {[
+              { label: 'Earned', value: `₹${earnings.toLocaleString('en-IN')}` },
+              { label: 'New requests', value: String(pendingCount) },
+              { label: 'Upcoming', value: String(upcomingCount) },
+            ].map(({ label, value }) => (
+              <div key={label} className="rounded-2xl border border-[#e9e2d9] bg-white p-4">
+                <p className="text-xs text-[#8a9490]">{label}</p>
+                <p className="mt-1 truncate text-xl font-semibold">{value}</p>
+              </div>
+            ))}
+          </section>
         )}
 
         {/* Pending requests callout */}
@@ -208,14 +234,14 @@ export default function CompanionDashboardPage() {
                 <div className="flex size-16 items-center justify-center rounded-full bg-[#dce9dd] text-2xl font-semibold">{data.display_name?.[0] ?? '?'}</div>
               )}
               {editing && (
-                <button type="button" className="absolute -bottom-1 -right-1 flex size-6 items-center justify-center rounded-full bg-[#173f35] text-white">
+                <span className="absolute -bottom-1 -right-1 flex size-6 items-center justify-center rounded-full bg-[#173f35] text-white">
                   <Camera className="size-3" />
-                </button>
+                </span>
               )}
             </div>
-            <div className="flex-1 min-w-0">
-              <p className="font-semibold truncate">{data.display_name}</p>
-              <p className="text-sm text-[#68756e] truncate">{data.email}</p>
+            <div className="min-w-0 flex-1">
+              <p className="truncate font-semibold">{data.display_name}</p>
+              <p className="truncate text-sm text-[#68756e]">{data.email}</p>
               {data.avg_rating ? (
                 <div className="mt-1 flex items-center gap-1 text-sm">
                   <Star className="size-3.5 fill-[#e7a547] text-[#e7a547]" />
@@ -259,6 +285,7 @@ export default function CompanionDashboardPage() {
               <button
                 type="button"
                 onClick={toggleAvailability}
+                aria-label="Toggle availability"
                 className={`relative h-6 w-11 rounded-full transition-colors ${data.is_visible ? 'bg-[#4e8068]' : 'bg-[#d5d5d5]'}`}
               >
                 <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${data.is_visible ? 'translate-x-5' : 'translate-x-0.5'}`} />
@@ -269,7 +296,7 @@ export default function CompanionDashboardPage() {
 
         {/* Edit form */}
         {editing && (
-          <section className="rounded-[22px] border border-[#e9e2d9] bg-white p-5 space-y-5">
+          <section className="space-y-5 rounded-[22px] border border-[#e9e2d9] bg-white p-5">
             <h2 className="font-semibold">Edit profile</h2>
 
             <label className="block text-sm font-medium">
@@ -302,7 +329,7 @@ export default function CompanionDashboardPage() {
             </label>
 
             <div>
-              <p className="text-sm font-medium mb-2">Activities</p>
+              <p className="mb-2 text-sm font-medium">Activities</p>
               <div className="flex flex-wrap gap-2">
                 {CATEGORIES.map((cat) => (
                   <button key={cat} type="button"
@@ -315,7 +342,7 @@ export default function CompanionDashboardPage() {
             </div>
 
             <div>
-              <p className="text-sm font-medium mb-2">Languages</p>
+              <p className="mb-2 text-sm font-medium">Languages</p>
               <div className="flex flex-wrap gap-2">
                 {LANGUAGES.map((lang) => (
                   <button key={lang} type="button"
@@ -346,7 +373,7 @@ export default function CompanionDashboardPage() {
 
         {/* Quick links */}
         {!editing && (
-          <section className="rounded-[22px] border border-[#e9e2d9] bg-white divide-y divide-[#f5f1ec]">
+          <section className="divide-y divide-[#f5f1ec] rounded-[22px] border border-[#e9e2d9] bg-white">
             {[
               { icon: BookOpen, label: 'Booking requests', sub: pendingCount > 0 ? `${pendingCount} waiting for your response` : 'Manage pending & accepted bookings', href: '/companion/bookings' },
               { icon: CircleDollarSign, label: 'Earnings', sub: 'Earnings per booking (after 15% fee)', href: '/companion/bookings' },
@@ -356,7 +383,7 @@ export default function CompanionDashboardPage() {
                 <div className="flex size-9 items-center justify-center rounded-full bg-[#f5f3ef]">
                   <Icon className="size-4 text-[#4e8068]" />
                 </div>
-                <div className="flex-1 min-w-0">
+                <div className="min-w-0 flex-1">
                   <p className="text-sm font-semibold">{label}</p>
                   <p className="text-xs text-[#8a9490]">{sub}</p>
                 </div>
@@ -372,7 +399,7 @@ export default function CompanionDashboardPage() {
             View my public profile →
           </Link>
         )}
-      </div>
-    </main>
+      </main>
+    </MobileShell>
   )
 }
