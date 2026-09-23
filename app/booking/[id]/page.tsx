@@ -21,10 +21,22 @@ type CompanionInfo = {
 
 declare global {
   interface Window {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     Razorpay: new (options: Record<string, unknown>) => { open: () => void }
   }
 }
+
+const PLATFORM_FEE_RATE = 0.15
+const DEFAULT_HOURLY_PRICE = 999
+
+// The listed price already includes the platform fee; split it so the
+// breakdown always adds up to the total the customer pays.
+function priceBreakdown(hourlyPrice: number | null, hours: number) {
+  const total = (hourlyPrice ?? DEFAULT_HOURLY_PRICE) * hours
+  const platformFee = Math.round(total * PLATFORM_FEE_RATE)
+  return { total, platformFee, companionShare: total - platformFee }
+}
+
+const inr = (n: number) => `₹${n.toLocaleString('en-IN')}`
 
 export default function BookingPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
@@ -78,12 +90,8 @@ export default function BookingPage({ params }: { params: Promise<{ id: string }
     if (!date) { setError('Please choose a date.'); setSubmitting(false); return }
     if (!location) { setError('Please enter a meeting location.'); setSubmitting(false); return }
 
-    const amount = (companion?.starting_price ?? 999) * duration
+    const { total: amount } = priceBreakdown(companion?.starting_price ?? null, duration)
 
-    // Create booking. `bookings` has no `location`, `notes`, `platform_fee`,
-    // `total_amount`, or `companion_earnings` columns. The real columns are
-    // `location_description`, `customer_notes`, `price`/`final_price`, and
-    // `payment_status` values are upper-case ('PENDING').
     const { data: booking, error: bookingError } = await supabase
       .from('bookings')
       .insert({
@@ -99,6 +107,7 @@ export default function BookingPage({ params }: { params: Promise<{ id: string }
         activity_type: activity || null,
         price: amount,
         final_price: amount,
+        total_amount: amount,
         currency: 'INR',
       })
       .select('id')
@@ -110,10 +119,8 @@ export default function BookingPage({ params }: { params: Promise<{ id: string }
       return
     }
 
-    // Check if Razorpay is configured
     const razorpayKeyId = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID
     if (!razorpayKeyId) {
-      // No payment configured — save booking as-is
       await supabase.from('notifications').insert({
         profile_id: user.id,
         type: 'booking',
@@ -126,7 +133,6 @@ export default function BookingPage({ params }: { params: Promise<{ id: string }
       return
     }
 
-    // Create Razorpay order
     const orderRes = await fetch('/api/razorpay/create-order', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -135,7 +141,6 @@ export default function BookingPage({ params }: { params: Promise<{ id: string }
     const order = await orderRes.json() as { orderId: string; amount: number; currency: string; error?: string }
     if (order.error) { setError(order.error); setSubmitting(false); return }
 
-    // Open Razorpay
     const rzp = new window.Razorpay({
       key: razorpayKeyId,
       amount: order.amount,
@@ -167,7 +172,7 @@ export default function BookingPage({ params }: { params: Promise<{ id: string }
   if (loading) return <MobileShell title="Booking"><div className="p-8 text-center text-sm text-[#738078]">Loading…</div></MobileShell>
   if (!companion) return <MobileShell title="Booking"><main className="mx-auto max-w-xl px-4 py-12"><h1 className="text-2xl font-semibold">This companion is not available</h1><Link href="/discover" className="mt-6 inline-flex rounded-full bg-[#173f35] px-5 py-3 text-sm font-semibold text-white">Back to discover</Link></main></MobileShell>
 
-  const amount = (companion.starting_price ?? 999) * duration
+  const { total: amount, platformFee, companionShare } = priceBreakdown(companion.starting_price, duration)
 
   if (bookingId) {
     return (
@@ -186,7 +191,7 @@ export default function BookingPage({ params }: { params: Promise<{ id: string }
             <div className="mt-4 space-y-2 text-sm">
               <div className="flex justify-between"><span className="text-[#738078]">Date</span><span className="font-medium">{date}</span></div>
               <div className="flex justify-between"><span className="text-[#738078]">Duration</span><span className="font-medium">{duration}h</span></div>
-              <div className="flex justify-between"><span className="text-[#738078]">Total</span><span className="font-semibold">₹{amount.toLocaleString('en-IN')}</span></div>
+              <div className="flex justify-between"><span className="text-[#738078]">Total</span><span className="font-semibold">{inr(amount)}</span></div>
             </div>
             <Link href="/dashboard" className="mt-6 inline-flex rounded-full bg-[#173f35] px-5 py-3 text-sm font-semibold text-white">View my bookings</Link>
           </div>
@@ -213,7 +218,7 @@ export default function BookingPage({ params }: { params: Promise<{ id: string }
             <div className="mt-6 grid gap-4 sm:grid-cols-2">
               <label className="rounded-2xl border border-[#e9e2d9] p-4 text-sm font-medium">
                 Date
-                <input type="date" required value={date} onChange={(e) => { setDate(e.target.value); setError('') }}
+                <input type="date" required value={date} min={new Date().toISOString().slice(0, 10)} onChange={(e) => { setDate(e.target.value); setError('') }}
                   className="mt-3 w-full rounded-xl border border-[#e9e2d9] bg-[#fbfaf7] p-3" />
               </label>
               <label className="rounded-2xl border border-[#e9e2d9] p-4 text-sm font-medium">
@@ -254,7 +259,7 @@ export default function BookingPage({ params }: { params: Promise<{ id: string }
             {error && <p className="mt-4 rounded-xl bg-[#fff3ed] px-4 py-3 text-sm text-[#a04f39]">{error}</p>}
             <div className="mt-5 flex items-center gap-3 rounded-2xl bg-[#f5f8f3] p-4 text-sm">
               <Clock3 className="size-5 shrink-0 text-[#4e8068]" />
-              <span>Total: ₹{amount.toLocaleString('en-IN')} for {duration}h</span>
+              <span>Total: {inr(amount)} for {duration}h</span>
             </div>
           </section>
         )}
@@ -270,8 +275,8 @@ export default function BookingPage({ params }: { params: Promise<{ id: string }
               <div className="flex justify-between gap-4"><span className="text-[#738078]">Activity</span><span className="font-semibold">{activity}</span></div>
               <div className="flex justify-between gap-4"><span className="text-[#738078]">Location</span><span className="font-semibold text-right">{location}</span></div>
               <div className="border-t border-[#eee9e2] pt-4">
-                <div className="flex justify-between text-base font-semibold"><span>Total</span><span>₹{amount.toLocaleString('en-IN')}</span></div>
-                <p className="mt-1 text-xs text-[#738078]">Includes 15% platform fee.</p>
+                <div className="flex justify-between text-base font-semibold"><span>Total</span><span>{inr(amount)}</span></div>
+                <p className="mt-1 text-xs text-[#738078]">Includes {inr(platformFee)} platform fee (15%).</p>
               </div>
             </div>
             <p className="mt-5 flex gap-2 rounded-2xl bg-[#f5f8f3] p-4 text-sm leading-6 text-[#52665a]">
@@ -286,14 +291,14 @@ export default function BookingPage({ params }: { params: Promise<{ id: string }
             <div className="flex items-start gap-3">
               <CreditCard className="mt-1 size-6 text-[#c36d4d]" />
               <div>
-                <h2 className="text-xl font-semibold">Pay ₹{amount.toLocaleString('en-IN')}</h2>
+                <h2 className="text-xl font-semibold">Pay {inr(amount)}</h2>
                 <p className="mt-2 text-sm leading-6 text-[#68756e]">Secure payment via Razorpay. UPI, cards, net banking and wallets accepted.</p>
               </div>
             </div>
             <div className="mt-5 rounded-2xl border border-[#e9e2d9] p-4 text-sm space-y-1.5">
-              <div className="flex justify-between"><span className="text-[#738078]">Subtotal</span><span>₹{((companion.starting_price ?? 999) * duration).toLocaleString('en-IN')}</span></div>
-              <div className="flex justify-between"><span className="text-[#738078]">Platform fee (15%)</span><span>₹{Math.round(amount * 0.15).toLocaleString('en-IN')}</span></div>
-              <div className="flex justify-between border-t border-[#eee9e2] pt-2 font-semibold text-base"><span>Total</span><span>₹{amount.toLocaleString('en-IN')}</span></div>
+              <div className="flex justify-between"><span className="text-[#738078]">Companion fee</span><span>{inr(companionShare)}</span></div>
+              <div className="flex justify-between"><span className="text-[#738078]">Platform fee (15%)</span><span>{inr(platformFee)}</span></div>
+              <div className="flex justify-between border-t border-[#eee9e2] pt-2 font-semibold text-base"><span>Total</span><span>{inr(amount)}</span></div>
             </div>
             {error && <p className="mt-4 rounded-xl bg-[#fff3ed] px-4 py-3 text-sm text-[#a04f39]">{error}</p>}
             <button
@@ -303,7 +308,7 @@ export default function BookingPage({ params }: { params: Promise<{ id: string }
               className="mt-5 flex w-full items-center justify-center gap-2 rounded-full bg-[#173f35] px-5 py-3.5 text-sm font-semibold text-white disabled:opacity-60"
             >
               <CreditCard className="size-4" />
-              {submitting ? 'Opening payment…' : `Pay ₹${amount.toLocaleString('en-IN')}`}
+              {submitting ? 'Opening payment…' : `Pay ${inr(amount)}`}
             </button>
             <p className="mt-3 text-center text-xs text-[#738078]">Powered by Razorpay · 256-bit SSL</p>
           </section>
@@ -311,12 +316,12 @@ export default function BookingPage({ params }: { params: Promise<{ id: string }
 
         {step === 'details' && (
           <BookingFooter
-            price={`₹${amount.toLocaleString('en-IN')}`}
+            price={inr(amount)}
             onContinue={() => { if (!date) { setError('Choose a date to continue.'); return } if (!location) { setError('Enter a meeting location.'); return } setError(''); setStep('review') }}
           />
         )}
         {step === 'review' && (
-          <BookingFooter price={`₹${amount.toLocaleString('en-IN')}`} label="Continue to payment" onContinue={() => setStep('payment')} />
+          <BookingFooter price={inr(amount)} label="Continue to payment" onContinue={() => setStep('payment')} />
         )}
         {step === 'payment' && (
           <div className="mt-6 flex items-center gap-2 text-sm text-[#738078]">
