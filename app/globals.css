@@ -153,31 +153,6 @@
   }
 }
 
-.brand-mark {
-  display: inline-flex;
-  position: relative;
-  width: 27px;
-  height: 27px;
-  align-items: center;
-  justify-content: center;
-  border-radius: 9px 9px 9px 3px;
-  background: #d17b58;
-  transform: rotate(-8deg);
-}
-.brand-mark::before,
-.brand-mark::after,
-.brand-mark span {
-  content: '';
-  position: absolute;
-  width: 7px;
-  height: 7px;
-  border-radius: 999px;
-  background: #fff9f1;
-}
-.brand-mark::before { transform: translate(-5px, -1px); }
-.brand-mark::after { transform: translate(5px, -1px); }
-.brand-mark span { transform: translateY(6px) scale(.72); }
-
 @layer base {
   * {
     @apply border-border outline-ring/50;
