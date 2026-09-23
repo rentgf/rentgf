@@ -4,12 +4,10 @@ import { createServerSupabaseClient } from '@/lib/supabase/server'
 
 export async function fetchOrCreateConversation(
   customerProfileId: string,
-  companionProfileId: string,
-  bookingId?: string
+  companionProfileId: string
 ): Promise<string | null> {
   const supabase = await createServerSupabaseClient()
 
-  // Check if conversation already exists
   const { data: existing } = await supabase
     .from('conversations')
     .select('id')
@@ -19,12 +17,12 @@ export async function fetchOrCreateConversation(
 
   if (existing) return existing.id
 
+  // `conversations` has no booking_id column.
   const { data, error } = await supabase
     .from('conversations')
     .insert({
       customer_profile_id: customerProfileId,
       companion_profile_id: companionProfileId,
-      booking_id: bookingId ?? null,
     })
     .select('id')
     .single()
@@ -54,10 +52,13 @@ export async function sendMessage(
   senderId: string,
   content: string
 ) {
+  const trimmed = content.trim()
+  if (!trimmed) return null
+
   const supabase = await createServerSupabaseClient()
   const { data, error } = await supabase
     .from('messages')
-    .insert({ conversation_id: conversationId, sender_id: senderId, content })
+    .insert({ conversation_id: conversationId, sender_id: senderId, content: trimmed })
     .select()
     .single()
 
@@ -66,7 +67,6 @@ export async function sendMessage(
     return null
   }
 
-  // Update last_message_at on conversation
   await supabase
     .from('conversations')
     .update({ last_message_at: new Date().toISOString() })
@@ -77,6 +77,19 @@ export async function sendMessage(
 
 export async function fetchUserConversations(profileId: string) {
   const supabase = await createServerSupabaseClient()
+
+  // `conversations.companion_profile_id` references companion_profiles.id,
+  // not profiles.id — resolve the companion row for this user (if any).
+  const { data: cp } = await supabase
+    .from('companion_profiles')
+    .select('id')
+    .eq('profile_id', profileId)
+    .maybeSingle()
+
+  const filter = cp
+    ? `customer_profile_id.eq.${profileId},companion_profile_id.eq.${cp.id}`
+    : `customer_profile_id.eq.${profileId}`
+
   const { data, error } = await supabase
     .from('conversations')
     .select(`
@@ -86,8 +99,8 @@ export async function fetchUserConversations(profileId: string) {
       last_message_at,
       messages(content, created_at, sender_id)
     `)
-    .or(`customer_profile_id.eq.${profileId},companion_profile_id.eq.${profileId}`)
-    .order('last_message_at', { ascending: false })
+    .or(filter)
+    .order('last_message_at', { ascending: false, nullsFirst: false })
 
   if (error) return []
   return data ?? []
