@@ -22,7 +22,7 @@ export async function sendOtpEmail(to: string, name: string, otp: string) {
   return getResend().emails.send({
     from: getSender(),
     to,
-    subject: `${otp} is your RentGF verification code`,
+    subject: 'RentGF verification code',
     html: otpTemplate(name, otp),
   })
 }
