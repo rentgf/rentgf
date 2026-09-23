@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import { Logo } from '@/components/logo'
 
 const steps = ['Basic information', 'Profile photo', 'City & languages', 'Interests', 'Categories', 'Bio & price', 'Availability', 'Verification', 'Review']
 
@@ -29,7 +30,10 @@ export default function OnboardingPage() {
   return (
     <main className="min-h-screen bg-[#fbfaf7] px-4 py-8 text-[#173f35] sm:px-6">
       <div className="mx-auto max-w-2xl">
-        <Link href="/companion" className="text-sm text-[#68756e]">← Back to studio</Link>
+        <div className="flex items-center justify-between gap-4">
+          <Logo className="w-fit" />
+          <Link href="/companion" className="text-sm text-[#68756e]">← Back to studio</Link>
+        </div>
         <div className="mt-12">
           <p className="text-sm font-semibold uppercase tracking-[.18em] text-[#c36d4d]">Companion onboarding</p>
           <h1 className="mt-2 text-4xl font-semibold tracking-[-.05em]">Tell people what makes time with you special.</h1>

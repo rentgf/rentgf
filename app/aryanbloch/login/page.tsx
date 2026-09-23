@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { ShieldCheck } from 'lucide-react'
+import { Logo } from '@/components/logo'
 
 export default function AdminLoginPage() {
   const router = useRouter()
@@ -35,8 +35,8 @@ export default function AdminLoginPage() {
     <main className="flex min-h-screen items-center justify-center bg-[#f5f3ef] px-4">
       <div className="w-full max-w-sm rounded-3xl border border-[#e9e2d9] bg-white p-8 shadow-sm">
         <div className="flex items-center gap-2">
-          <ShieldCheck className="size-6 text-[#4e8068]" />
-          <span className="font-semibold text-[#173f35]">RentGF Admin</span>
+          <Logo className="w-fit" />
+          <span className="rounded-full bg-[#edf4ed] px-2 py-0.5 text-xs font-semibold text-[#4e8068]">Admin</span>
         </div>
         <h1 className="mt-8 text-2xl font-semibold tracking-[-0.03em] text-[#173f35]">Sign in</h1>
         <p className="mt-1 text-sm text-[#68756e]">Enter your admin password to continue.</p>
