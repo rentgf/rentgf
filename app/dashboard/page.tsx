@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
-import { Bell, CalendarDays, Heart, MessageCircle, ShieldCheck } from 'lucide-react'
+import { Bell, CalendarDays, Heart, MessageCircle, ShieldCheck, type LucideIcon } from 'lucide-react'
 import { MobileShell } from '@/components/mobile-shell'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
@@ -17,13 +17,17 @@ type Booking = {
   created_at: string | null
 }
 
+type Stat = { count: number; label: string; Icon: LucideIcon }
+
 export default function DashboardPage() {
   const router = useRouter()
   const [bookings, setBookings] = useState<Booking[]>([])
+  const [totalBookings, setTotalBookings] = useState(0)
   const [favCount, setFavCount] = useState(0)
   const [unreadCount, setUnreadCount] = useState(0)
   const [displayName, setDisplayName] = useState('')
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState('')
 
   useEffect(() => {
     async function load() {
@@ -32,15 +36,22 @@ export default function DashboardPage() {
       if (!user) { router.push('/login?redirectTo=/dashboard'); return }
 
       const [profileResult, bookingsResult, favsResult, notifsResult] = await Promise.all([
-        supabase.from('profiles').select('display_name, full_name').eq('id', user.id).single(),
-        // `bookings` has no `total_amount` column — the real column is `final_price`.
-        supabase.from('bookings').select('id, status, scheduled_date, scheduled_time, final_price, companion_profile_id, created_at').eq('customer_profile_id', user.id).order('created_at', { ascending: false }).limit(5),
+        supabase.from('profiles').select('display_name, full_name').eq('id', user.id).maybeSingle(),
+        supabase
+          .from('bookings')
+          .select('id, status, scheduled_date, scheduled_time, final_price, companion_profile_id, created_at', { count: 'exact' })
+          .eq('customer_profile_id', user.id)
+          .order('created_at', { ascending: false })
+          .limit(5),
         supabase.from('favorites').select('id', { count: 'exact', head: true }).eq('customer_profile_id', user.id),
         supabase.from('notifications').select('id', { count: 'exact', head: true }).eq('profile_id', user.id).eq('is_read', false),
       ])
 
+      if (bookingsResult.error) setLoadError('Could not load your bookings. Please refresh.')
+
       setDisplayName(profileResult.data?.display_name ?? profileResult.data?.full_name ?? 'there')
       setBookings(bookingsResult.data ?? [])
+      setTotalBookings(bookingsResult.count ?? bookingsResult.data?.length ?? 0)
       setFavCount(favsResult.count ?? 0)
       setUnreadCount(notifsResult.count ?? 0)
       setLoading(false)
@@ -49,6 +60,12 @@ export default function DashboardPage() {
   }, [router])
 
   const upcoming = bookings.filter((b) => ['pending', 'accepted', 'confirmed'].includes(b.status))
+
+  const stats: Stat[] = [
+    { count: upcoming.length, label: 'Upcoming bookings', Icon: CalendarDays },
+    { count: favCount, label: 'Likes', Icon: Heart },
+    { count: totalBookings, label: 'Total bookings', Icon: MessageCircle },
+  ]
 
   return (
     <MobileShell title="My bookings">
@@ -74,13 +91,14 @@ export default function DashboardPage() {
               </Link>
             </div>
 
+            {loadError && <p className="mt-6 rounded-xl bg-[#fff3ed] px-4 py-3 text-sm text-[#a04f39]">{loadError}</p>}
+
             <div className="mt-8 grid gap-4 sm:grid-cols-3">
-              {[[upcoming.length.toString(), 'Upcoming bookings', CalendarDays], [favCount.toString(), 'Likes', Heart], [bookings.length.toString(), 'Total bookings', MessageCircle]].map(([count, label, Icon]) => (
-                <div key={label as string} className="rounded-2xl border border-[#e9e2d9] bg-white p-5">
-                  {/* @ts-expect-error icon component */}
+              {stats.map(({ count, label, Icon }) => (
+                <div key={label} className="rounded-2xl border border-[#e9e2d9] bg-white p-5">
                   <Icon className="size-5 text-[#c36d4d]" />
-                  <p className="mt-5 text-sm text-[#68756e]">{label as string}</p>
-                  <p className="mt-1 text-2xl font-semibold">{count as string}</p>
+                  <p className="mt-5 text-sm text-[#68756e]">{label}</p>
+                  <p className="mt-1 text-2xl font-semibold">{count}</p>
                 </div>
               ))}
             </div>
@@ -105,7 +123,7 @@ export default function DashboardPage() {
                           {booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
                         </span>
                       </div>
-                      {booking.final_price && (
+                      {booking.final_price != null && (
                         <p className="mt-2 text-sm text-[#738078]">₹{booking.final_price.toLocaleString('en-IN')}</p>
                       )}
                     </div>
