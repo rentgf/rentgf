@@ -56,19 +56,27 @@ export default function DiscoverPage() {
     setLoading(true)
     const supabase = createClient()
     const { data: { user } } = await supabase.auth.getUser()
+    let blockedIds: string[] = []
     if (user) {
       setUserId(user.id)
-      const { data: favs } = await supabase.from('favorites').select('companion_profile_id').eq('customer_profile_id', user.id)
+      const [{ data: favs }, { data: blocks }] = await Promise.all([
+        supabase.from('favorites').select('companion_profile_id').eq('customer_profile_id', user.id),
+        supabase.from('blocks').select('blocked_id').eq('blocker_id', user.id),
+      ])
       if (favs) setSavedIds(new Set(favs.map((f) => f.companion_profile_id)))
+      blockedIds = (blocks ?? []).map((b) => b.blocked_id)
     }
     // `companion_profiles` has no `is_approved`/`review_count` columns. The real
     // columns are `verification_status` and `total_reviews`.
-    const { data } = await supabase
+    let dbQuery = supabase
       .from('companion_profiles')
-      .select('id, bio, city, starting_price, avg_rating, total_reviews, categories, languages, profiles!inner(display_name, profile_photo_url)')
+      .select('id, profile_id, bio, city, starting_price, avg_rating, total_reviews, categories, languages, profiles!inner(display_name, profile_photo_url)')
       .eq('verification_status', 'approved')
       .eq('is_visible', true)
       .order('avg_rating', { ascending: false })
+    // Hide companions this user has blocked.
+    if (blockedIds.length) dbQuery = dbQuery.not('profile_id', 'in', `(${blockedIds.join(',')})`)
+    const { data } = await dbQuery
     if (data) {
       const mapped: CompanionCard[] = data.map((row) => {
         const profile = row.profiles as unknown as { display_name: string | null; profile_photo_url: string | null }
