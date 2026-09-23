@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
-import { Bell, CalendarDays, Heart, MessageCircle, ShieldCheck, type LucideIcon } from 'lucide-react'
+import { Bell, CalendarDays, Heart, MessageCircle, ShieldCheck, Star, type LucideIcon } from 'lucide-react'
 import { MobileShell } from '@/components/mobile-shell'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
@@ -14,6 +14,7 @@ type Booking = {
   scheduled_time: string | null
   final_price: number | null
   companion_profile_id: string
+  companion_display_name: string | null
   created_at: string | null
 }
 
@@ -39,27 +40,42 @@ export default function DashboardPage() {
         supabase.from('profiles').select('display_name, full_name').eq('id', user.id).maybeSingle(),
         supabase
           .from('bookings')
-          .select('id, status, scheduled_date, scheduled_time, final_price, companion_profile_id, created_at', { count: 'exact' })
+          .select('id, status, scheduled_date, scheduled_time, final_price, companion_profile_id, created_at, companion_profiles!inner(profiles!inner(display_name))', { count: 'exact' })
           .eq('customer_profile_id', user.id)
           .order('created_at', { ascending: false })
-          .limit(5),
+          .limit(10),
         supabase.from('favorites').select('id', { count: 'exact', head: true }).eq('customer_profile_id', user.id),
         supabase.from('notifications').select('id', { count: 'exact', head: true }).eq('profile_id', user.id).eq('is_read', false),
       ])
 
       if (bookingsResult.error) setLoadError('Could not load your bookings. Please refresh.')
 
+      const mapped: Booking[] = (bookingsResult.data ?? []).map((b) => {
+        const cp = b.companion_profiles as unknown as { profiles: { display_name: string | null } }
+        return {
+          id: b.id,
+          status: b.status,
+          scheduled_date: b.scheduled_date,
+          scheduled_time: b.scheduled_time,
+          final_price: b.final_price,
+          companion_profile_id: b.companion_profile_id,
+          companion_display_name: cp?.profiles?.display_name ?? null,
+          created_at: b.created_at,
+        }
+      })
+
       setDisplayName(profileResult.data?.display_name ?? profileResult.data?.full_name ?? 'there')
-      setBookings(bookingsResult.data ?? [])
-      setTotalBookings(bookingsResult.count ?? bookingsResult.data?.length ?? 0)
+      setBookings(mapped)
+      setTotalBookings(bookingsResult.count ?? mapped.length)
       setFavCount(favsResult.count ?? 0)
       setUnreadCount(notifsResult.count ?? 0)
       setLoading(false)
     }
-    load()
+    void load()
   }, [router])
 
   const upcoming = bookings.filter((b) => ['pending', 'accepted', 'confirmed'].includes(b.status))
+  const completed = bookings.filter((b) => b.status === 'completed')
 
   const stats: Stat[] = [
     { count: upcoming.length, label: 'Upcoming bookings', Icon: CalendarDays },
@@ -123,9 +139,34 @@ export default function DashboardPage() {
                           {booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
                         </span>
                       </div>
-                      {booking.final_price != null && (
-                        <p className="mt-2 text-sm text-[#738078]">₹{booking.final_price.toLocaleString('en-IN')}</p>
+                      {booking.companion_display_name && (
+                        <p className="mt-2 text-sm font-semibold text-[#173f35]">with {booking.companion_display_name}</p>
                       )}
+                      {booking.final_price != null && (
+                        <p className="mt-1 text-sm text-[#738078]">₹{booking.final_price.toLocaleString('en-IN')}</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {completed.length > 0 && (
+              <div className="mt-8">
+                <h2 className="font-semibold">Leave a review</h2>
+                <div className="mt-4 flex flex-col gap-3">
+                  {completed.slice(0, 3).map((booking) => (
+                    <div key={booking.id} className="flex items-center justify-between rounded-2xl border border-[#e9e2d9] bg-white p-4">
+                      <div>
+                        <p className="text-sm font-semibold">Booking with {booking.companion_display_name ?? 'companion'}</p>
+                        <p className="mt-0.5 text-xs text-[#738078]">{booking.scheduled_date ?? ''}</p>
+                      </div>
+                      <Link
+                        href={`/reviews?bookingId=${booking.id}&companionId=${booking.companion_profile_id}`}
+                        className="flex items-center gap-1.5 rounded-full bg-[#fff8ed] px-3 py-2 text-xs font-semibold text-[#8c5c2a]"
+                      >
+                        <Star className="size-3.5 fill-[#e7a547] text-[#e7a547]" /> Rate
+                      </Link>
                     </div>
                   ))}
                 </div>
@@ -138,10 +179,10 @@ export default function DashboardPage() {
                 ['Likes', favCount === 0 ? 'Like profiles you want to revisit.' : `${favCount} saved`, '/likes', 'View liked profiles'],
                 ['Messages', 'Conversations will appear here after a booking.', '/messages', 'Open messages'],
               ].map(([title, text, href, action]) => (
-                <section key={title} className="rounded-2xl border border-[#e9e2d9] bg-white p-5">
+                <section key={title as string} className="rounded-2xl border border-[#e9e2d9] bg-white p-5">
                   <h2 className="font-semibold">{title}</h2>
                   <p className="mt-3 min-h-12 text-sm leading-6 text-[#68756e]">{text}</p>
-                  <Link href={href} className="mt-5 inline-block text-sm font-semibold text-[#c36d4d]">{action} →</Link>
+                  <Link href={href as string} className="mt-5 inline-block text-sm font-semibold text-[#c36d4d]">{action} →</Link>
                 </section>
               ))}
             </div>
