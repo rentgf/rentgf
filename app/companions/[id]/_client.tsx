@@ -6,6 +6,7 @@ import { ArrowLeft, CalendarDays, Heart, MapPin, MessageCircle, ShieldCheck, Sta
 import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { ReportBlockActions } from '@/components/report-block-actions'
+import { Logo } from '@/components/logo'
 
 type CompanionDetail = {
   id: string
@@ -135,11 +136,13 @@ export default function CompanionProfileClient({ id }: { id: string }) {
 
   return (
     <main className="min-h-screen bg-[#fbfaf7] pb-10 text-[#173f35]">
-      <header className="flex items-center gap-3 border-b border-[#eee9e2] px-4 py-4">
-        <Link href="/discover" aria-label="Back to discover" className="rounded-full bg-white p-2">
-          <ArrowLeft className="size-5" />
-        </Link>
-        <span className="font-semibold tracking-[-.04em]">rent<span className="text-[#d17b58]">gf</span></span>
+      <header className="flex items-center justify-between border-b border-[#eee9e2] px-4 py-3">
+        <div className="flex items-center gap-3">
+          <Link href="/discover" aria-label="Back to discover" className="rounded-full bg-white p-2">
+            <ArrowLeft className="size-5" />
+          </Link>
+          <Logo />
+        </div>
       </header>
 
       <div className="mx-auto max-w-2xl px-4">
