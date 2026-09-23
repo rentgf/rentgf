@@ -13,6 +13,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Email and name required' }, { status: 400 })
     }
 
+    if (!process.env.RESEND_API_KEY) {
+      console.error('send-otp error: RESEND_API_KEY is not configured')
+      return NextResponse.json({ error: 'Email service is not configured. Please contact support.' }, { status: 500 })
+    }
+
     const otp = generateOtp()
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString() // 10 min
 
@@ -23,8 +28,15 @@ export async function POST(req: NextRequest) {
       { onConflict: 'email' },
     )
 
-    // Send via Resend
-    await sendOtpEmail(email, name, otp)
+    // Send via Resend. The Resend SDK resolves with { data, error } instead of
+    // throwing on API failures (e.g. unverified sender domain, invalid API key),
+    // so we must check `error` explicitly or a failed send is silently ignored
+    // and the client is told the code was sent when it was not.
+    const { error: sendError } = await sendOtpEmail(email, name, otp)
+    if (sendError) {
+      console.error('send-otp error: Resend failed to send email:', sendError)
+      return NextResponse.json({ error: 'Failed to send verification email. Please try again in a moment.' }, { status: 502 })
+    }
 
     return NextResponse.json({ ok: true })
   } catch (err) {
