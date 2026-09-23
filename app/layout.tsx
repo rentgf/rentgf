@@ -7,7 +7,6 @@ const SITE_NAME = 'RentGF'
 const TITLE = 'RentGF — Verified Social Companion App in India'
 const DESCRIPTION =
   'Book verified female companions for coffee, dining, travel, and events across Delhi, Mumbai, Bengaluru, Hyderabad and more. Safe, lawful, non-sexual companionship. 18+.'
-// Social share preview image (logo banner), hosted on CDN.
 const OG_IMAGE = 'https://hercules-cdn.com/file_5dWAanG7BPC5VSnVh4fErz6N'
 
 export const metadata: Metadata = {
@@ -83,8 +82,13 @@ export const metadata: Metadata = {
   icons: {
     icon: [
       { url: '/icon.svg', type: 'image/svg+xml' },
+      { url: '/icon-light-32x32.png', sizes: '32x32', type: 'image/png', media: '(prefers-color-scheme: light)' },
+      { url: '/icon-dark-32x32.png', sizes: '32x32', type: 'image/png', media: '(prefers-color-scheme: dark)' },
+      { url: '/icon-light-32x32.png', sizes: '32x32', type: 'image/png' },
     ],
-    apple: '/apple-icon.png',
+    apple: [
+      { url: '/apple-icon.png', sizes: '180x180', type: 'image/png' },
+    ],
     shortcut: '/icon.svg',
   },
   verification: {
@@ -100,7 +104,6 @@ export const viewport: Viewport = {
   ],
 }
 
-// JSON-LD structured data for Google
 function JsonLd() {
   const schema = {
     '@context': 'https://schema.org',
