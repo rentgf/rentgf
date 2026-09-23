@@ -31,6 +31,7 @@ export default function CompanionDashboardPage() {
   const [data, setData] = useState<CompanionData | null>(null)
   const [loading, setLoading] = useState(true)
   const [editing, setEditing] = useState(false)
+  const [pendingCount, setPendingCount] = useState(0)
 
   // Edit form state
   const [bio, setBio] = useState('')
@@ -62,6 +63,13 @@ export default function CompanionDashboardPage() {
       router.push('/become-companion')
       return
     }
+
+    const { count } = await supabase
+      .from('bookings')
+      .select('id', { count: 'exact', head: true })
+      .eq('companion_profile_id', cp.id)
+      .eq('status', 'pending')
+    setPendingCount(count ?? 0)
 
     const p = cp.profiles as unknown as { display_name: string | null; email: string | null; profile_photo_url: string | null }
     const mapped: CompanionData = {
@@ -176,6 +184,17 @@ export default function CompanionDashboardPage() {
             <CheckCircle2 className="size-5 shrink-0 text-[#4e8068]" />
             <p className="font-semibold text-[#4e8068]">Profile approved and live!</p>
           </div>
+        )}
+
+        {/* Pending requests callout */}
+        {pendingCount > 0 && !editing && (
+          <Link href="/companion/bookings" className="flex items-center justify-between gap-3 rounded-2xl bg-[#173f35] p-4 text-white">
+            <div className="flex items-center gap-3">
+              <BookOpen className="size-5 shrink-0" />
+              <p className="font-semibold">{pendingCount} new booking {pendingCount === 1 ? 'request' : 'requests'}</p>
+            </div>
+            <span className="text-sm font-semibold">Review →</span>
+          </Link>
         )}
 
         {/* Profile card */}
@@ -328,7 +347,7 @@ export default function CompanionDashboardPage() {
         {!editing && (
           <section className="rounded-[22px] border border-[#e9e2d9] bg-white divide-y divide-[#f5f1ec]">
             {[
-              { icon: BookOpen, label: 'Booking requests', sub: 'Manage pending & accepted bookings', href: '/dashboard' },
+              { icon: BookOpen, label: 'Booking requests', sub: pendingCount > 0 ? `${pendingCount} waiting for your response` : 'Manage pending & accepted bookings', href: '/companion/bookings' },
               { icon: CircleDollarSign, label: 'Earnings', sub: 'View your payout history', href: '/dashboard' },
               { icon: ShieldCheck, label: 'Verification', sub: 'ID & document status', href: '/settings' },
             ].map(({ icon: Icon, label, sub, href }) => (
