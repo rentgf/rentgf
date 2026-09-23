@@ -3,8 +3,9 @@ import { ShieldCheck, Star, Users } from 'lucide-react'
 import { Logo } from '@/components/logo'
 
 export const metadata = {
-  title: 'About — RentGF',
+  title: 'About Us',
   description: 'RentGF is a safe companionship marketplace connecting people for lawful, non-sexual social activities.',
+  alternates: { canonical: '/about' },
 }
 
 export default function AboutPage() {

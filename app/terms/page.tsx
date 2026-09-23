@@ -2,8 +2,9 @@ import Link from 'next/link'
 import { Logo } from '@/components/logo'
 
 export const metadata = {
-  title: 'Terms of Service — RentGF',
+  title: 'Terms of Service',
   description: 'Terms and conditions for using the RentGF companionship platform.',
+  alternates: { canonical: '/terms' },
 }
 
 export default function TermsPage() {

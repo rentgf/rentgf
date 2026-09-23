@@ -2,8 +2,9 @@ import Link from 'next/link'
 import { Logo } from '@/components/logo'
 
 export const metadata = {
-  title: 'Privacy Policy — RentGF',
+  title: 'Privacy Policy',
   description: 'How RentGF collects, uses, and protects your personal information.',
+  alternates: { canonical: '/privacy-policy' },
 }
 
 export default function PrivacyPolicyPage() {
