@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { useState } from 'react'
 import { CheckCircle2, Mail, MessageCircle, ShieldCheck } from 'lucide-react'
+import { Logo } from '@/components/logo'
 
 export default function ContactPage() {
   const [name, setName] = useState('')
@@ -19,7 +20,7 @@ export default function ContactPage() {
 
   return (
     <main className="mx-auto max-w-2xl px-4 py-16">
-      <Link href="/" className="text-lg font-semibold text-[#173f35]">rent<span className="text-[#d17b58]">gf</span></Link>
+      <Logo className="w-fit" />
       <h1 className="mt-10 text-4xl font-semibold tracking-[-0.04em] text-[#173f35]">Contact us</h1>
       <p className="mt-3 text-sm leading-6 text-[#68756e]">Have a question, concern, or feedback? We are here to help.</p>
 
