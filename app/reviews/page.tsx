@@ -1,8 +1,8 @@
 'use client'
 
+import Link from 'next/link'
 import { FormEvent, useEffect, useState } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
-import Link from 'next/link'
 import { CheckCircle2, Star } from 'lucide-react'
 import { MobileShell } from '@/components/mobile-shell'
 import { createClient } from '@/lib/supabase/client'
@@ -40,7 +40,7 @@ export default function ReviewsPage() {
     const { error: insertError } = await supabase.from('reviews').insert({
       companion_profile_id: companionId,
       customer_profile_id: userId,
-      booking_id: bookingId ?? undefined,
+      booking_id: bookingId ?? null,
       rating,
       comment: text || null,
       is_visible: true,
@@ -81,7 +81,7 @@ export default function ReviewsPage() {
               <textarea
                 required
                 value={text}
-                onChange={(event) => setText(event.target.value)}
+                onChange={(e) => setText(e.target.value)}
                 rows={5}
                 placeholder="Share a respectful note about your experience."
                 className="mt-2 w-full rounded-xl border border-[#e9e2d9] bg-[#fbfaf7] p-3 font-normal"
