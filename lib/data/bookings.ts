@@ -20,6 +20,30 @@ export async function fetchUserBookings(customerProfileId: string): Promise<Book
   return data ?? []
 }
 
+// Bookings received by a companion. `bookings.companion_profile_id` references
+// `companion_profiles.id`, NOT `profiles.id`, so resolve it first.
+export async function fetchCompanionBookings(profileId: string): Promise<Booking[]> {
+  const supabase = await createServerSupabaseClient()
+  const { data: cp } = await supabase
+    .from('companion_profiles')
+    .select('id')
+    .eq('profile_id', profileId)
+    .maybeSingle()
+  if (!cp) return []
+
+  const { data, error } = await supabase
+    .from('bookings')
+    .select('*')
+    .eq('companion_profile_id', cp.id)
+    .order('created_at', { ascending: false })
+
+  if (error) {
+    console.error('fetchCompanionBookings error:', error.message)
+    return []
+  }
+  return data ?? []
+}
+
 export async function createBooking({
   customerProfileId,
   companionProfileId,
@@ -30,6 +54,7 @@ export async function createBooking({
   notes,
   totalAmount,
   categoryId,
+  activityType,
 }: {
   customerProfileId: string
   companionProfileId: string
@@ -40,11 +65,13 @@ export async function createBooking({
   notes?: string
   totalAmount: number
   categoryId?: string
+  activityType?: string
 }): Promise<{ id: string } | null> {
   const supabase = await createServerSupabaseClient()
-  const platformFee = Math.round(totalAmount * 0.15)
-  const companionEarnings = totalAmount - platformFee
 
+  // Real columns: location_description, customer_notes, price, final_price,
+  // total_amount, payment_status (upper-case). There are no platform_fee /
+  // companion_earnings columns — those belong in the `earnings` table.
   const { data, error } = await supabase
     .from('bookings')
     .insert({
@@ -52,15 +79,17 @@ export async function createBooking({
       companion_profile_id: companionProfileId,
       category_id: categoryId ?? null,
       status: 'pending',
+      payment_status: 'PENDING',
       scheduled_date: scheduledDate,
       scheduled_time: scheduledTime,
       duration_hours: durationHours,
-      location,
-      notes: notes ?? null,
+      location_description: location,
+      customer_notes: notes ?? null,
+      activity_type: activityType ?? null,
+      price: totalAmount,
+      final_price: totalAmount,
       total_amount: totalAmount,
       currency: 'INR',
-      platform_fee: platformFee,
-      companion_earnings: companionEarnings,
     })
     .select('id')
     .single()
