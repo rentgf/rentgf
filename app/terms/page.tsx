@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { Logo } from '@/components/logo'
 
 export const metadata = {
   title: 'Terms of Service — RentGF',
@@ -8,7 +9,7 @@ export const metadata = {
 export default function TermsPage() {
   return (
     <main className="mx-auto max-w-2xl px-4 py-16">
-      <Link href="/" className="text-lg font-semibold text-[#173f35]">rent<span className="text-[#d17b58]">gf</span></Link>
+      <Logo className="w-fit" />
       <h1 className="mt-10 text-4xl font-semibold tracking-[-0.04em] text-[#173f35]">Terms of Service</h1>
       <p className="mt-3 text-sm text-[#68756e]">Last updated: June 2025</p>
 
