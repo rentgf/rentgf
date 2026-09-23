@@ -1,1 +1,3 @@
-export default function Loading() { return <main className="flex min-h-screen items-center justify-center bg-[#fbfaf7] text-[#173f35]"><div className="flex flex-col items-center gap-4"><span className="brand-mark"><span /></span><div className="h-1.5 w-28 overflow-hidden rounded-full bg-[#e9e2d9]"><div className="h-full w-1/2 animate-pulse rounded-full bg-[#d17b58]" /></div><p className="text-sm text-[#68756e]">Loading your space…</p></div></main> }
+import { Logo } from '@/components/logo'
+
+export default function Loading() { return <main className="flex min-h-screen items-center justify-center bg-[#fbfaf7] text-[#173f35]"><div className="flex flex-col items-center gap-4"><Logo /><div className="h-1.5 w-28 overflow-hidden rounded-full bg-[#e9e2d9]"><div className="h-full w-1/2 animate-pulse rounded-full bg-[#d17b58]" /></div><p className="text-sm text-[#68756e]">Loading your space…</p></div></main> }
