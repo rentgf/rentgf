@@ -17,18 +17,31 @@ type FavoriteCompanion = {
   avg_rating: number | null
 }
 
+type FavRow = {
+  id: string
+  companion_profile_id: string
+  companion_profiles: {
+    id: string
+    starting_price: number | null
+    avg_rating: number | null
+    city: string | null
+    profiles: {
+      display_name: string | null
+      profile_photo_url: string | null
+    }
+  }
+}
+
 export default function LikesPage() {
   const router = useRouter()
   const [favorites, setFavorites] = useState<FavoriteCompanion[]>([])
   const [loading, setLoading] = useState(true)
-  const [profileId, setProfileId] = useState<string | null>(null)
 
   useEffect(() => {
     async function load() {
       const supabase = createClient()
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { router.push('/login?redirectTo=/likes'); return }
-      setProfileId(user.id)
 
       const { data } = await supabase
         .from('favorites')
@@ -46,24 +59,19 @@ export default function LikesPage() {
         .eq('customer_profile_id', user.id)
         .order('created_at', { ascending: false })
 
-      const mapped = (data ?? []).map((row) => {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const cp = row.companion_profiles as any
-        const profile = cp?.profiles
-        return {
-          favorite_id: row.id,
-          companion_profile_id: row.companion_profile_id,
-          display_name: profile?.display_name ?? null,
-          profile_photo_url: profile?.profile_photo_url ?? null,
-          city: cp?.city ?? null,
-          starting_price: cp?.starting_price ?? null,
-          avg_rating: cp?.avg_rating ?? null,
-        }
-      })
+      const mapped = (data as unknown as FavRow[] ?? []).map((row) => ({
+        favorite_id: row.id,
+        companion_profile_id: row.companion_profile_id,
+        display_name: row.companion_profiles?.profiles?.display_name ?? null,
+        profile_photo_url: row.companion_profiles?.profiles?.profile_photo_url ?? null,
+        city: row.companion_profiles?.city ?? null,
+        starting_price: row.companion_profiles?.starting_price ?? null,
+        avg_rating: row.companion_profiles?.avg_rating ?? null,
+      }))
       setFavorites(mapped)
       setLoading(false)
     }
-    load()
+    void load()
   }, [router])
 
   async function removeFavorite(favoriteId: string) {
@@ -119,7 +127,7 @@ export default function LikesPage() {
                     <Heart className="size-5 fill-[#d17b58] text-[#d17b58]" />
                   </button>
                 </div>
-                <div className="border-t border-[#f0ebe4] px-4 py-3 flex items-center justify-between">
+                <div className="flex items-center justify-between border-t border-[#f0ebe4] px-4 py-3">
                   {fav.starting_price && (
                     <p className="text-xs text-[#8a958e]">From <span className="font-semibold text-[#173f35]">₹{fav.starting_price.toLocaleString('en-IN')}</span>/hr</p>
                   )}

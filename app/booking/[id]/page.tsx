@@ -28,8 +28,6 @@ declare global {
 const PLATFORM_FEE_RATE = 0.15
 const DEFAULT_HOURLY_PRICE = 999
 
-// The listed price already includes the platform fee; split it so the
-// breakdown always adds up to the total the customer pays.
 function priceBreakdown(hourlyPrice: number | null, hours: number) {
   const total = (hourlyPrice ?? DEFAULT_HOURLY_PRICE) * hours
   const platformFee = Math.round(total * PLATFORM_FEE_RATE)
@@ -77,7 +75,7 @@ export default function BookingPage({ params }: { params: Promise<{ id: string }
       }
       setLoading(false)
     }
-    load()
+    void load()
   }, [id])
 
   async function createBookingAndPay() {
@@ -92,6 +90,8 @@ export default function BookingPage({ params }: { params: Promise<{ id: string }
 
     const { total: amount } = priceBreakdown(companion?.starting_price ?? null, duration)
 
+    // Only insert columns that actually exist in the bookings table.
+    // Do NOT include 'price' (not a real column — causes a DB error).
     const { data: booking, error: bookingError } = await supabase
       .from('bookings')
       .insert({
@@ -105,10 +105,7 @@ export default function BookingPage({ params }: { params: Promise<{ id: string }
         location_description: location,
         customer_notes: note || null,
         activity_type: activity || null,
-        price: amount,
         final_price: amount,
-        total_amount: amount,
-        currency: 'INR',
       })
       .select('id')
       .single()

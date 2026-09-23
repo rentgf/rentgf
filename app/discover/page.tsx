@@ -1,5 +1,7 @@
 import type { Metadata } from 'next'
 
+const SITE_URL = 'https://rentgf.site'
+
 export const metadata: Metadata = {
   title: 'Discover Companions',
   description:
@@ -16,12 +18,12 @@ export const metadata: Metadata = {
     'social companion booking India',
     'rent companion India',
   ],
+  alternates: { canonical: '/discover' },
   openGraph: {
     title: 'Discover Companions · RentGF',
     description: 'Browse verified companions in your city. Book for coffee, dining, travel, and more.',
-    url: 'https://rentgf.in/discover',
+    url: `${SITE_URL}/discover`,
   },
-  alternates: { canonical: '/discover' },
 }
 
 export { default } from './_page'

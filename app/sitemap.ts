@@ -1,8 +1,9 @@
 import type { MetadataRoute } from 'next'
+import { createClient } from '@supabase/supabase-js'
 
 const SITE_URL = 'https://rentgf.site'
 
-export default function sitemap(): MetadataRoute.Sitemap {
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const cities = [
     'delhi', 'mumbai', 'bengaluru', 'hyderabad', 'chennai',
     'kolkata', 'pune', 'jaipur', 'ahmedabad', 'surat',
@@ -16,6 +17,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${SITE_URL}/become-companion`, lastModified: new Date(), changeFrequency: 'monthly', priority: 0.7 },
     { url: `${SITE_URL}/privacy-policy`, lastModified: new Date(), changeFrequency: 'yearly', priority: 0.3 },
     { url: `${SITE_URL}/terms`, lastModified: new Date(), changeFrequency: 'yearly', priority: 0.3 },
+    { url: `${SITE_URL}/safety`, lastModified: new Date(), changeFrequency: 'monthly', priority: 0.5 },
   ]
 
   const cityPages: MetadataRoute.Sitemap = cities.map((city) => ({
@@ -25,5 +27,28 @@ export default function sitemap(): MetadataRoute.Sitemap {
     priority: 0.8,
   }))
 
-  return [...staticPages, ...cityPages]
+  // Fetch approved visible companion profiles for individual page URLs
+  let companionPages: MetadataRoute.Sitemap = []
+  try {
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    )
+    const { data } = await supabase
+      .from('companion_profiles')
+      .select('id, updated_at')
+      .eq('verification_status', 'approved')
+      .eq('is_visible', true)
+      .limit(200)
+    companionPages = (data ?? []).map((cp) => ({
+      url: `${SITE_URL}/companions/${cp.id}`,
+      lastModified: cp.updated_at ? new Date(cp.updated_at) : new Date(),
+      changeFrequency: 'weekly' as const,
+      priority: 0.85,
+    }))
+  } catch {
+    // Silently skip companion pages if DB is unreachable at build time
+  }
+
+  return [...staticPages, ...cityPages, ...companionPages]
 }
