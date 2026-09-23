@@ -35,7 +35,7 @@ export const metadata: Metadata = {
     icon: [{ url: '/icon.svg', type: 'image/svg+xml' }],
     shortcut: '/icon.svg',
   },
-  verification: { google: '' },
+  // Google Search Console is verified via a DNS TXT record, so no meta tag is needed here.
 }
 
 export const viewport: Viewport = {

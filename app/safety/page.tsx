@@ -1,4 +1,11 @@
+import type { Metadata } from 'next'
 import Link from 'next/link'
 import { Logo } from '@/components/logo'
+
+export const metadata: Metadata = {
+  title: 'Safety',
+  description: 'How RentGF keeps companionship safe: 18+ only, verified companions, public meetings, and zero tolerance for illegal activity.',
+  alternates: { canonical: '/safety' },
+}
 
 export default function SafetyPage() { return <main className="min-h-screen bg-[#fbfaf7] px-4 py-10 text-[#173f35] sm:px-6"><div className="mx-auto max-w-3xl"><div className="flex items-center justify-between gap-4"><Logo className="w-fit" /><Link href="/" className="text-sm font-medium text-[#68756e]">← Back home</Link></div><p className="mt-16 text-sm font-semibold uppercase tracking-[.18em] text-[#c36d4d]">Safety promise</p><h1 className="mt-2 text-4xl font-semibold tracking-[-.05em]">Connection should feel safe.</h1><div className="mt-8 flex flex-col gap-5 text-[#596960]"><p>RentGF is strictly for adults 18+ and lawful, non-sexual social companionship. Sexual services, prostitution, exploitation, coercion, trafficking, illegal activity, and any interaction involving minors are prohibited.</p><p>Meet in public places, keep your own transportation, protect private information, and trust your instincts. Use in-app reporting and blocking tools when available.</p><p>Companion profiles become visible only after required onboarding and verification review. Verification documents and private contact information are never public.</p></div><div className="mt-10 rounded-2xl bg-[#173f35] p-6 text-white"><h2 className="font-semibold">Need help?</h2><p className="mt-2 text-sm text-white/70">Contact support or report a concern. In an emergency, contact local emergency services.</p><Link href="/support" className="mt-4 inline-block rounded-full bg-white px-4 py-2 text-sm font-semibold text-[#173f35]">Contact support</Link></div></div></main> }
