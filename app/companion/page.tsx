@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { BookOpen, Camera, CheckCircle2, ChevronRight, CircleDollarSign, Clock, LogOut, Pencil, ShieldCheck, Star } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import { Logo } from '@/components/logo'
 
 type CompanionData = {
   id: string
@@ -157,7 +158,7 @@ export default function CompanionDashboardPage() {
     <main className="min-h-screen bg-[#fbfaf7] pb-16 text-[#173f35]">
       <header className="sticky top-0 z-10 border-b border-[#eee9e2] bg-[#fbfaf7]/95 backdrop-blur">
         <div className="mx-auto flex h-16 max-w-2xl items-center justify-between px-4">
-          <Link href="/" className="font-semibold tracking-[-.04em]">rent<span className="text-[#d17b58]">gf</span></Link>
+          <Logo />
           <div className="flex items-center gap-3">
             <span className="text-sm text-[#68756e]">Companion</span>
             <button type="button" onClick={signOut} className="rounded-full border border-[#e4e9e1] p-2 text-[#68756e]">
