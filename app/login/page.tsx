@@ -75,6 +75,10 @@ export default function LoginPage() {
           <Link href="/forgot-password" className="text-[#68756e]">Forgot password?</Link>
           <Link href="/register" className="font-semibold text-[#c36d4d]">Create account</Link>
         </div>
+        <p className="mt-5 text-center text-sm text-[#68756e]">
+          Want to earn as a companion?{' '}
+          <Link href="/earn-as-companion" className="font-semibold text-[#c36d4d]">Register here</Link>
+        </p>
       </div>
     </main>
   )
