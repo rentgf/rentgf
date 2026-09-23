@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { Bell, Compass, Heart, Home, MessageCircle, Search, ShieldCheck, SlidersHorizontal, Star, UserRound } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import { Logo } from '@/components/logo'
 
 type CompanionCard = {
   id: string
@@ -66,15 +67,12 @@ export default function DiscoverPage() {
       if (favs) setSavedIds(new Set(favs.map((f) => f.companion_profile_id)))
       blockedIds = (blocks ?? []).map((b) => b.blocked_id)
     }
-    // `companion_profiles` has no `is_approved`/`review_count` columns. The real
-    // columns are `verification_status` and `total_reviews`.
     let dbQuery = supabase
       .from('companion_profiles')
       .select('id, profile_id, bio, city, starting_price, avg_rating, total_reviews, categories, languages, profiles!inner(display_name, profile_photo_url)')
       .eq('verification_status', 'approved')
       .eq('is_visible', true)
       .order('avg_rating', { ascending: false })
-    // Hide companions this user has blocked.
     if (blockedIds.length) dbQuery = dbQuery.not('profile_id', 'in', `(${blockedIds.join(',')})`)
     const { data } = await dbQuery
     if (data) {
@@ -116,7 +114,7 @@ export default function DiscoverPage() {
     <main id="main-content" className="min-h-screen bg-[#fbfaf7] pb-24 text-[#173f35] md:pb-10">
       <header className="sticky top-0 z-20 border-b border-[#eee9e2] bg-[#fbfaf7]/95 backdrop-blur">
         <div className="mx-auto flex h-[64px] max-w-6xl items-center justify-between px-4 sm:px-6">
-          <Link href="/" className="font-semibold tracking-[-.04em]">rent<span className="text-[#d17b58]">gf</span></Link>
+          <Logo />
           <div className="flex items-center gap-3">
             <Link href="/notifications" aria-label="Notifications"><Bell className="size-[18px]" /></Link>
             <Link href="/register" className="rounded-full bg-[#173f35] px-3.5 py-2 text-xs font-semibold text-white">Join</Link>
@@ -135,18 +133,10 @@ export default function DiscoverPage() {
           </span>
         </div>
 
-        {/* City SEO links — visually subtle, helps Google discover city pages */}
         <div className="mt-3 hidden flex-wrap gap-2 sm:flex">
           {['Delhi', 'Mumbai', 'Bengaluru', 'Hyderabad', 'Chennai', 'Pune', 'Kolkata', 'Jaipur'].map((c) => (
-            <button
-              key={c}
-              type="button"
-              onClick={() => setCity(city === c ? '' : c)}
-              aria-label={`Companions in ${c}`}
-              className={`rounded-full px-3 py-1 text-xs ${ city === c ? 'bg-[#173f35] font-semibold text-white' : 'bg-[#f0ece6] text-[#68756e]' }`}
-            >
-              {c}
-            </button>
+            <button key={c} type="button" onClick={() => setCity(city === c ? '' : c)} aria-label={`Companions in ${c}`}
+              className={`rounded-full px-3 py-1 text-xs ${ city === c ? 'bg-[#173f35] font-semibold text-white' : 'bg-[#f0ece6] text-[#68756e]' }`}>{c}</button>
           ))}
         </div>
 
