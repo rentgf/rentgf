@@ -21,6 +21,31 @@ export type CompanionWithProfile = {
   is_discoverable: boolean | null
 }
 
+type JoinedProfile = { display_name: string | null; profile_photo_url: string | null } | null
+
+const SELECT = `
+  id, profile_id, bio, city, languages, categories, interests, starting_price, currency,
+  avg_rating, total_reviews, verification_status, is_visible, is_discoverable,
+  profiles!inner(display_name, profile_photo_url)
+`
+
+type Row = Omit<CompanionWithProfile, 'display_name' | 'profile_photo_url'> & { profiles: unknown }
+
+function mapRow(row: Row): CompanionWithProfile {
+  const { profiles, ...rest } = row
+  const p = profiles as JoinedProfile
+  return { ...rest, display_name: p?.display_name ?? null, profile_photo_url: p?.profile_photo_url ?? null }
+}
+
+// Profile ids the signed-in user has blocked (RLS only exposes the user's own blocks).
+export async function fetchBlockedProfileIds(): Promise<string[]> {
+  const supabase = await createServerSupabaseClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return []
+  const { data } = await supabase.from('blocks').select('blocked_id').eq('blocker_id', user.id)
+  return (data ?? []).map((b) => b.blocked_id)
+}
+
 export async function fetchCompanions({
   query = '',
   city = '',
@@ -35,39 +60,21 @@ export async function fetchCompanions({
   offset?: number
 } = {}): Promise<CompanionWithProfile[]> {
   const supabase = await createServerSupabaseClient()
+  const blockedIds = await fetchBlockedProfileIds()
 
   let dbQuery = supabase
     .from('companion_profiles')
-    .select(`
-      id,
-      profile_id,
-      bio,
-      city,
-      languages,
-      categories,
-      interests,
-      starting_price,
-      currency,
-      avg_rating,
-      total_reviews,
-      verification_status,
-      is_visible,
-      is_discoverable,
-      profiles!inner(display_name, profile_photo_url)
-    `)
+    .select(SELECT)
     .eq('verification_status', 'approved')
     .eq('is_visible', true)
     .eq('is_discoverable', true)
     .order('avg_rating', { ascending: false })
     .range(offset, offset + limit - 1)
 
-  if (city) {
-    dbQuery = dbQuery.ilike('city', city)
-  }
-
-  if (category) {
-    dbQuery = dbQuery.contains('categories', [category])
-  }
+  if (city) dbQuery = dbQuery.ilike('city', city)
+  if (category) dbQuery = dbQuery.contains('categories', [category])
+  // Filter blocked companions in the database so pages stay full.
+  if (blockedIds.length) dbQuery = dbQuery.not('profile_id', 'in', `(${blockedIds.join(',')})`)
 
   const { data, error } = await dbQuery
 
@@ -76,26 +83,10 @@ export async function fetchCompanions({
     return []
   }
 
-  return (data ?? []).map((row) => ({
-    id: row.id,
-    profile_id: row.profile_id,
-    bio: row.bio,
-    city: row.city,
-    languages: row.languages,
-    categories: row.categories,
-    interests: row.interests,
-    starting_price: row.starting_price,
-    currency: row.currency,
-    avg_rating: row.avg_rating,
-    total_reviews: row.total_reviews,
-    verification_status: row.verification_status,
-    is_visible: row.is_visible,
-    is_discoverable: row.is_discoverable,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    display_name: (row.profiles as any)?.display_name ?? null,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    profile_photo_url: (row.profiles as any)?.profile_photo_url ?? null,
-  }))
+  const rows = (data ?? []) as unknown as Row[]
+  const q = query.trim().toLowerCase()
+  const mapped = rows.map(mapRow)
+  return q ? mapped.filter((c) => (c.display_name ?? '').toLowerCase().includes(q) || (c.bio ?? '').toLowerCase().includes(q)) : mapped
 }
 
 export async function fetchCompanionById(companionProfileId: string): Promise<CompanionWithProfile | null> {
@@ -103,46 +94,10 @@ export async function fetchCompanionById(companionProfileId: string): Promise<Co
 
   const { data, error } = await supabase
     .from('companion_profiles')
-    .select(`
-      id,
-      profile_id,
-      bio,
-      city,
-      languages,
-      categories,
-      interests,
-      starting_price,
-      currency,
-      avg_rating,
-      total_reviews,
-      verification_status,
-      is_visible,
-      is_discoverable,
-      profiles!inner(display_name, profile_photo_url)
-    `)
+    .select(SELECT)
     .eq('id', companionProfileId)
     .single()
 
   if (error || !data) return null
-
-  return {
-    id: data.id,
-    profile_id: data.profile_id,
-    bio: data.bio,
-    city: data.city,
-    languages: data.languages,
-    categories: data.categories,
-    interests: data.interests,
-    starting_price: data.starting_price,
-    currency: data.currency,
-    avg_rating: data.avg_rating,
-    total_reviews: data.total_reviews,
-    verification_status: data.verification_status,
-    is_visible: data.is_visible,
-    is_discoverable: data.is_discoverable,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    display_name: (data.profiles as any)?.display_name ?? null,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    profile_photo_url: (data.profiles as any)?.profile_photo_url ?? null,
-  }
+  return mapRow(data as unknown as Row)
 }
