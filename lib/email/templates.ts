@@ -2,6 +2,9 @@
 
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://rentgf.site'
 
+// PNG logo: Gmail/Outlook do not render SVG images in emails.
+const LOGO_URL = `${BASE_URL}/apple-icon.png`
+
 function baseLayout(content: string, preview = '') {
   return `<!DOCTYPE html>
 <html lang="en">
@@ -21,7 +24,10 @@ function baseLayout(content: string, preview = '') {
           <tr>
             <td align="center" style="padding-bottom:24px;">
               <a href="${BASE_URL}" style="text-decoration:none;">
-                <span style="font-size:22px;font-weight:700;color:#173f35;letter-spacing:-0.03em;">rent<span style="color:#d17b58;">gf</span></span>
+                <table role="presentation" cellspacing="0" cellpadding="0" border="0"><tr>
+                  <td style="padding-right:10px;vertical-align:middle;"><img src="${LOGO_URL}" width="36" height="36" alt="RentGF" style="display:block;border:0;border-radius:9px;" /></td>
+                  <td style="vertical-align:middle;"><span style="font-size:22px;font-weight:700;color:#173f35;letter-spacing:-0.03em;">rent<span style="color:#d17b58;">gf</span></span></td>
+                </tr></table>
               </a>
             </td>
           </tr>
@@ -88,7 +94,8 @@ export function otpTemplate(name: string, otp: string) {
     <tr><td style="padding:20px 32px 32px;">
       <p style="margin:0;font-size:13px;color:#9aa49d;line-height:1.6;">If you didn't create a RentGF account, you can safely ignore this email. Never share this code with anyone.</p>
     </td></tr>`
-  return baseLayout(content, `Your RentGF verification code is ${otp}`)
+  // Preview text intentionally omits the code so it is not visible in the inbox list.
+  return baseLayout(content, 'Use this code to verify your RentGF account')
 }
 
 // ─────────────────────────────────────────
