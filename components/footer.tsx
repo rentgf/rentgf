@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { ShieldCheck } from 'lucide-react'
+import { Logo } from '@/components/logo'
 
 export function Footer() {
   return (
@@ -8,9 +9,7 @@ export function Footer() {
         <div className="grid gap-8 sm:grid-cols-3">
           {/* Brand */}
           <div>
-            <Link href="/" className="text-lg font-semibold text-[#173f35]">
-              rent<span className="text-[#d17b58]">gf</span>
-            </Link>
+            <Logo className="w-fit" />
             <p className="mt-3 text-sm leading-6 text-[#68756e]">
               Safe, verified, non-sexual social companionship. 18+ only.
             </p>

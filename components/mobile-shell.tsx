@@ -2,7 +2,8 @@
 
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { ArrowLeft, CalendarDays, Compass, Heart, Home, MessageCircle, UserRound } from 'lucide-react'
+import { ArrowLeft, Compass, Heart, Home, MessageCircle, UserRound } from 'lucide-react'
+import { Logo } from '@/components/logo'
 
 const navItems = [
   { href: '/', label: 'Home', icon: Home },
@@ -21,7 +22,7 @@ export function MobileShell({ children, title, showBack = false }: { children: R
     <div className="min-h-screen bg-[#fbfaf7] pb-24 text-[#173f35]">
       <header className="sticky top-0 z-20 border-b border-[#eee9e2] bg-[#fbfaf7]/95 px-4 py-3 backdrop-blur sm:px-6">
         <div className="mx-auto flex max-w-6xl items-center gap-3">
-          {showBack && !isHome ? <button type="button" onClick={() => router.back()} aria-label="Go back" className="rounded-full border border-[#e4e9e1] bg-white p-2 text-[#173f35] transition hover:bg-[#f0f5ef]"><ArrowLeft className="size-5" /></button> : <Link href="/" className="flex items-center gap-2 text-lg font-semibold"><span className="brand-mark"><span /></span><span>rent<span className="text-[#d17b58]">gf</span></span></Link>}
+          {showBack && !isHome ? <button type="button" onClick={() => router.back()} aria-label="Go back" className="rounded-full border border-[#e4e9e1] bg-white p-2 text-[#173f35] transition hover:bg-[#f0f5ef]"><ArrowLeft className="size-5" /></button> : <Logo />}
           {title && <h1 className="truncate text-base font-semibold">{title}</h1>}
         </div>
       </header>
