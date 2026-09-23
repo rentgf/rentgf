@@ -5,6 +5,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { CheckCircle2, RefreshCw } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import { Logo } from '@/components/logo'
 
 type Step = 'form' | 'otp' | 'done'
 
@@ -119,7 +120,7 @@ export default function RegisterPage() {
     }, 1000)
   }
 
-  // ── Done screen ──────────────────────────────────────────────────────────
+  // ── Done screen ──────────────────────────────────────────────────────────────────────
   if (step === 'done') {
     return (
       <main className="flex min-h-screen items-center justify-center bg-[#fbfaf7] px-4 py-10">
@@ -141,14 +142,12 @@ export default function RegisterPage() {
     )
   }
 
-  // ── OTP screen ───────────────────────────────────────────────────────────
+  // ── OTP screen ───────────────────────────────────────────────────────────────────────
   if (step === 'otp') {
     return (
       <main className="flex min-h-screen items-center justify-center bg-[#fbfaf7] px-4 py-10">
         <div className="w-full max-w-md rounded-3xl border border-[#e9e2d9] bg-white p-6 shadow-sm sm:p-8">
-          <Link href="/" className="text-lg font-semibold text-[#173f35]">
-            rent<span className="text-[#d17b58]">gf</span>
-          </Link>
+          <Logo className="w-fit" />
           <h1 className="mt-10 text-3xl font-semibold tracking-[-.04em] text-[#173f35]">Check your email</h1>
           <p className="mt-2 text-sm leading-6 text-[#68756e]">
             We sent a 6-digit code to <span className="font-semibold text-[#173f35]">{email}</span>. Enter it below to verify your account.
@@ -207,14 +206,12 @@ export default function RegisterPage() {
     )
   }
 
-  // ── Registration form ────────────────────────────────────────────────────
+  // ── Registration form ────────────────────────────────────────────────────────────────
   return (
     <main className="min-h-screen bg-[#fbfaf7] px-4 py-10">
       <div className="mx-auto max-w-md">
         <div className="rounded-3xl border border-[#e9e2d9] bg-white p-6 shadow-sm sm:p-8">
-          <Link href="/" className="text-lg font-semibold text-[#173f35]">
-            rent<span className="text-[#d17b58]">gf</span>
-          </Link>
+          <Logo className="w-fit" />
           <h1 className="mt-10 text-3xl font-semibold tracking-[-.04em] text-[#173f35]">Create your account</h1>
           <p className="mt-2 text-sm leading-6 text-[#68756e]">Join adults 18+ seeking lawful, non-sexual companionship.</p>
 
