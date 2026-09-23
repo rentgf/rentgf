@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { CheckCircle2, ChevronRight, ShieldCheck, Star, Users } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import { Logo } from '@/components/logo'
 
 type Step = 'intro' | 'personal' | 'profile' | 'submitted'
 
@@ -106,7 +107,7 @@ export default function BecomeCompanionPage() {
     <main className="min-h-screen bg-[#fbfaf7] pb-16">
       <header className="sticky top-0 z-10 border-b border-[#eee9e2] bg-[#fbfaf7]/95 backdrop-blur">
         <div className="mx-auto flex h-16 max-w-xl items-center justify-between px-4">
-          <Link href="/" className="font-semibold tracking-[-.04em] text-[#173f35]">rent<span className="text-[#d17b58]">gf</span></Link>
+          <Logo />
           <span className="text-xs text-[#68756e]">
             {step === 'intro' && 'Overview'}
             {step === 'personal' && 'Step 1 of 2'}
