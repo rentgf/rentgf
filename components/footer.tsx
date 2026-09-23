@@ -24,7 +24,7 @@ export function Footer() {
             <p className="text-xs font-semibold uppercase tracking-widest text-[#9aa49d]">Platform</p>
             <ul className="mt-4 space-y-3 text-sm">
               <li><Link href="/discover" className="text-[#52645b] hover:text-[#173f35]">Discover companions</Link></li>
-              <li><Link href="/become-companion" className="text-[#52645b] hover:text-[#173f35]">Become a companion</Link></li>
+              <li><Link href="/earn-as-companion" className="text-[#52645b] hover:text-[#173f35]">Earn as a companion</Link></li>
               <li><Link href="/about" className="text-[#52645b] hover:text-[#173f35]">About us</Link></li>
               <li><Link href="/contact" className="text-[#52645b] hover:text-[#173f35]">Contact</Link></li>
               <li><Link href="/safety" className="text-[#52645b] hover:text-[#173f35]">Safety</Link></li>
