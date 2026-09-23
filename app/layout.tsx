@@ -79,14 +79,8 @@ export const metadata: Metadata = {
       'max-snippet': -1,
     },
   },
-  icons: {
-    icon: [
-      { url: '/icon.svg', type: 'image/svg+xml' },
-      { url: '/icon-light-32x32.png', sizes: '32x32', type: 'image/png' },
-    ],
-    apple: [{ url: '/apple-icon.png', sizes: '180x180', type: 'image/png' }],
-    shortcut: '/icon.svg',
-  },
+  // No favicon — user does not want any icon
+  icons: {},
   verification: {
     google: '',
   },
@@ -122,10 +116,6 @@ function JsonLd() {
         '@id': `${SITE_URL}/#organization`,
         name: SITE_NAME,
         url: SITE_URL,
-        logo: {
-          '@type': 'ImageObject',
-          url: `${SITE_URL}/icon.svg`,
-        },
         sameAs: [],
         areaServed: { '@type': 'Country', name: 'India' },
         description: DESCRIPTION,
@@ -148,11 +138,8 @@ export default function RootLayout({
     <html lang="en-IN">
       <head>
         <JsonLd />
-        {/* Explicit favicon links — these override Next.js metadata in most browsers */}
-        <link rel="icon" href="/icon.svg" type="image/svg+xml" />
-        <link rel="icon" href="/icon-light-32x32.png" sizes="32x32" type="image/png" />
-        <link rel="apple-touch-icon" href="/apple-icon.png" sizes="180x180" />
-        <link rel="shortcut icon" href="/icon.svg" />
+        {/* Explicitly remove any favicon so no icon appears in browser tabs */}
+        <link rel="icon" href="data:," />
       </head>
       <body className="antialiased">
         <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded focus:bg-white focus:px-4 focus:py-2 focus:text-sm focus:font-semibold">
