@@ -16,10 +16,10 @@ export async function middleware(req: NextRequest) {
     return NextResponse.next()
   }
 
-  // Supabase session refresh + auth guard for customer-facing protected routes.
+  // Supabase session refresh, sign-in guard, and customer/companion separation.
   return updateSession(req)
 }
 
 export const config = {
-  matcher: ['/aryanbloch/:path*', '/dashboard/:path*', '/booking/:path*', '/messages/:path*', '/profile/:path*', '/settings/:path*', '/favorites/:path*', '/likes/:path*', '/notifications/:path*'],
+  matcher: ['/', '/aryanbloch/:path*', '/dashboard/:path*', '/booking/:path*', '/messages/:path*', '/profile/:path*', '/settings/:path*', '/favorites/:path*', '/likes/:path*', '/notifications/:path*', '/discover/:path*', '/become-companion/:path*', '/companion/:path*'],
 }

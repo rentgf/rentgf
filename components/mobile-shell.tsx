@@ -2,21 +2,41 @@
 
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { ArrowLeft, Compass, Heart, Home, MessageCircle, UserRound } from 'lucide-react'
+import { ArrowLeft, Bell, CalendarDays, Compass, Heart, Home, LayoutDashboard, MessageCircle, UserRound, type LucideIcon } from 'lucide-react'
 import { Logo } from '@/components/logo'
+import { useRole, type AppRole } from '@/lib/use-role'
 
-const navItems = [
-  { href: '/', label: 'Home', icon: Home },
-  { href: '/discover', label: 'Discover', icon: Compass },
-  { href: '/likes', label: 'Likes', icon: Heart },
-  { href: '/messages', label: 'Messages', icon: MessageCircle },
-  { href: '/profile', label: 'Profile', icon: UserRound },
-]
+type NavItem = { href: string; label: string; icon: LucideIcon; exact?: boolean }
+
+// Customers (who book) and companions (who earn) get completely separate menus.
+const NAV_ITEMS: Record<AppRole, NavItem[]> = {
+  customer: [
+    { href: '/', label: 'Home', icon: Home, exact: true },
+    { href: '/discover', label: 'Discover', icon: Compass },
+    { href: '/likes', label: 'Likes', icon: Heart },
+    { href: '/messages', label: 'Messages', icon: MessageCircle },
+    { href: '/profile', label: 'Profile', icon: UserRound },
+  ],
+  companion: [
+    { href: '/companion', label: 'Studio', icon: LayoutDashboard, exact: true },
+    { href: '/companion/bookings', label: 'Requests', icon: CalendarDays },
+    { href: '/messages', label: 'Messages', icon: MessageCircle },
+    { href: '/notifications', label: 'Alerts', icon: Bell },
+    { href: '/profile', label: 'Profile', icon: UserRound },
+  ],
+}
+
+function isActive(item: NavItem, pathname: string) {
+  if (item.href === '/companion') return pathname === '/companion' || pathname.startsWith('/companion/verification')
+  return item.exact ? pathname === item.href : pathname.startsWith(item.href)
+}
 
 export function MobileShell({ children, title, showBack = false }: { children: React.ReactNode; title?: string; showBack?: boolean }) {
   const pathname = usePathname()
   const router = useRouter()
+  const role = useRole()
   const isHome = pathname === '/'
+  const items = role ? NAV_ITEMS[role] : []
 
   return (
     <div className="min-h-screen bg-[#fbfaf7] pb-24 text-[#173f35]">
@@ -24,14 +44,16 @@ export function MobileShell({ children, title, showBack = false }: { children: R
         <div className="mx-auto flex max-w-6xl items-center gap-3">
           {showBack && !isHome ? <button type="button" onClick={() => router.back()} aria-label="Go back" className="rounded-full border border-[#e4e9e1] bg-white p-2 text-[#173f35] transition hover:bg-[#f0f5ef]"><ArrowLeft className="size-5" /></button> : <Logo />}
           {title && <h1 className="truncate text-base font-semibold">{title}</h1>}
+          {role === 'companion' && <span className="ml-auto rounded-full bg-[#fbeee7] px-2.5 py-1 text-[11px] font-semibold text-[#b5623f]">Companion</span>}
         </div>
       </header>
       {children}
       <nav aria-label="Main navigation" className="fixed inset-x-0 bottom-0 z-30 border-t border-[#e8e7df] bg-white/95 px-2 pb-[calc(env(safe-area-inset-bottom)+8px)] pt-2 shadow-[0_-6px_20px_rgba(23,63,53,.06)] backdrop-blur">
-        <div className="mx-auto grid max-w-lg grid-cols-5 gap-1">
-          {navItems.map(({ href, label, icon: Icon }) => {
-            const active = href === '/' ? pathname === '/' : pathname.startsWith(href)
-            return <Link key={href} href={href} className={`flex min-h-12 flex-col items-center justify-center gap-1 rounded-xl text-[11px] font-medium transition ${active ? 'bg-[#edf4ee] text-[#173f35]' : 'text-[#809087] hover:bg-[#f7f8f4]'}`}><Icon className="size-5" strokeWidth={active ? 2.4 : 1.8} /><span>{label}</span></Link>
+        <div className="mx-auto grid min-h-12 max-w-lg grid-cols-5 gap-1">
+          {items.map((item) => {
+            const active = isActive(item, pathname)
+            const Icon = item.icon
+            return <Link key={item.href} href={item.href} className={`flex min-h-12 flex-col items-center justify-center gap-1 rounded-xl text-[11px] font-medium transition ${active ? 'bg-[#edf4ee] text-[#173f35]' : 'text-[#809087] hover:bg-[#f7f8f4]'}`}><Icon className="size-5" strokeWidth={active ? 2.4 : 1.8} /><span>{item.label}</span></Link>
           })}
         </div>
       </nav>
