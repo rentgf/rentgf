@@ -22,25 +22,38 @@ export async function getCurrentProfile(): Promise<Profile | null> {
 }
 
 /**
- * Ensure a profile row exists for the authenticated user.
- * Called after sign-up or first sign-in.
+ * Ensure a profile row exists for the authenticated user without changing an
+ * existing role. The role may belong to a companion or an administrator.
  */
 export async function upsertProfile(userId: string, email?: string, name?: string): Promise<Profile | null> {
   const supabase = createClient()
-  const { data, error } = await supabase
+  const { data: existing, error: lookupError } = await supabase
     .from('profiles')
-    .upsert({
-      id: userId,
-      email: email ?? null,
-      full_name: name ?? null,
-      display_name: name ?? null,
-      role: 'customer',
-      account_status: 'active',
-      age_confirmed: false,
-      access_granted: false,
-    }, { onConflict: 'id' })
-    .select()
-    .single()
+    .select('id')
+    .eq('id', userId)
+    .maybeSingle()
+
+  if (lookupError) {
+    console.error('upsertProfile lookup error:', lookupError.message)
+    return null
+  }
+
+  const profileFields = {
+    email: email ?? null,
+    full_name: name ?? null,
+    display_name: name ?? null,
+  }
+
+  const { data, error } = existing
+    ? await supabase.from('profiles').update(profileFields).eq('id', userId).select().single()
+    : await supabase.from('profiles').insert({
+        id: userId,
+        ...profileFields,
+        role: 'customer',
+        account_status: 'active',
+        age_confirmed: false,
+        access_granted: false,
+      }).select().single()
 
   if (error) {
     console.error('upsertProfile error:', error.message)
