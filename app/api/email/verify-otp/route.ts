@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerSupabaseClient } from '@/lib/supabase/server'
+import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 
 export async function POST(req: NextRequest) {
   try {
@@ -8,32 +8,19 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Email and OTP required' }, { status: 400 })
     }
 
-    const supabase = await createServerSupabaseClient()
-
-    const { data, error } = await supabase
-      .from('email_otps')
-      .select('otp, expires_at, used')
-      .eq('email', email)
-      .single()
-
-    if (error || !data) {
-      return NextResponse.json({ error: 'OTP not found. Please request a new code.' }, { status: 400 })
+    // verify_email_otp checks expiry, single use, and max 5 attempts atomically.
+    const supabase = createAdminSupabaseClient()
+    const { data: valid, error } = await supabase.rpc('verify_email_otp', {
+      p_email: email.trim().toLowerCase(),
+      p_otp: otp.trim(),
+    })
+    if (error) {
+      console.error('verify-otp error:', error)
+      return NextResponse.json({ error: 'Verification failed' }, { status: 500 })
     }
-
-    if (data.used) {
-      return NextResponse.json({ error: 'OTP already used. Please request a new code.' }, { status: 400 })
+    if (!valid) {
+      return NextResponse.json({ error: 'Incorrect or expired code. Please request a new code.' }, { status: 400 })
     }
-
-    if (new Date(data.expires_at) < new Date()) {
-      return NextResponse.json({ error: 'OTP expired. Please request a new code.' }, { status: 400 })
-    }
-
-    if (data.otp !== otp) {
-      return NextResponse.json({ error: 'Incorrect code. Please try again.' }, { status: 400 })
-    }
-
-    // Mark as used
-    await supabase.from('email_otps').update({ used: true }).eq('email', email)
 
     return NextResponse.json({ ok: true })
   } catch (err) {
