@@ -5,9 +5,12 @@ import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 
 // Must match the booking page pricing.
 const DEFAULT_HOURLY_PRICE = 999
+// Matches platform_settings max booking hours.
+const MAX_HOURS = 8
+const UNPAYABLE = ['rejected', 'cancelled', 'completed', 'disputed']
 
 export async function POST(req: NextRequest) {
-  const { bookingId } = (await req.json()) as { bookingId?: string }
+  const { bookingId } = (await req.json().catch(() => ({}))) as { bookingId?: string }
   if (!bookingId) return NextResponse.json({ error: 'Bad request' }, { status: 400 })
 
   const keyId = process.env.RAZORPAY_KEY_ID
@@ -24,7 +27,7 @@ export async function POST(req: NextRequest) {
   const supabase = createAdminSupabaseClient()
   const { data: booking } = await supabase
     .from('bookings')
-    .select('id, customer_profile_id, companion_profile_id, duration_hours, payment_status')
+    .select('id, customer_profile_id, companion_profile_id, duration_hours, payment_status, status')
     .eq('id', bookingId)
     .maybeSingle()
   if (!booking || booking.customer_profile_id !== user.id) {
@@ -33,11 +36,14 @@ export async function POST(req: NextRequest) {
   if (booking.payment_status === 'PAID') {
     return NextResponse.json({ error: 'Booking already paid' }, { status: 409 })
   }
+  if (UNPAYABLE.includes(String(booking.status))) {
+    return NextResponse.json({ error: 'This booking can no longer be paid' }, { status: 409 })
+  }
 
   // Recompute the price on the server from the companion's rate — the browser
   // could have written any price into the booking row.
   const hours = Number(booking.duration_hours)
-  if (!Number.isInteger(hours) || hours < 1 || hours > 12) {
+  if (!Number.isInteger(hours) || hours < 1 || hours > MAX_HOURS) {
     return NextResponse.json({ error: 'Invalid booking duration' }, { status: 400 })
   }
   const { data: companion } = await supabase
@@ -46,7 +52,7 @@ export async function POST(req: NextRequest) {
     .eq('id', booking.companion_profile_id)
     .maybeSingle()
   if (!companion) return NextResponse.json({ error: 'Companion not found' }, { status: 404 })
-  const amount = (companion.starting_price ?? DEFAULT_HOURLY_PRICE) * hours
+  const amount = Number(companion.starting_price ?? DEFAULT_HOURLY_PRICE) * hours
 
   await supabase
     .from('bookings')
