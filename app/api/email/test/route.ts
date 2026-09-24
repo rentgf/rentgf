@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { isAdminRequest } from '@/lib/admin-auth'
 import { sendOtpEmail, sendWelcomeEmail, sendBookingRequestEmail, sendBookingConfirmedEmail, sendBookingCancelledEmail, sendPaymentReceiptEmail, sendCompanionApprovedEmail, sendCompanionRejectedEmail, sendBookingReminderEmail } from '@/lib/email/resend'
 
 export async function POST(req: NextRequest) {
+  // Admin-only: otherwise anyone could send email from our domain.
+  if (!isAdminRequest(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   try {
     const { to, template } = (await req.json()) as { to?: string; template?: string }
     if (!to || !template) return NextResponse.json({ error: 'Missing fields' }, { status: 400 })
