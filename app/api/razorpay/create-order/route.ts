@@ -54,10 +54,18 @@ export async function POST(req: NextRequest) {
   if (!companion) return NextResponse.json({ error: 'Companion not found' }, { status: 404 })
   const amount = Number(companion.starting_price ?? DEFAULT_HOURLY_PRICE) * hours
 
-  await supabase
+  if (!Number.isFinite(amount) || amount <= 0) {
+    return NextResponse.json({ error: 'Invalid booking amount' }, { status: 400 })
+  }
+
+  const { error: updateError } = await supabase
     .from('bookings')
     .update({ price: amount, final_price: amount, total_amount: amount })
     .eq('id', bookingId)
+  if (updateError) {
+    console.error('booking price sync failed:', updateError.message)
+    return NextResponse.json({ error: 'Could not prepare payment' }, { status: 500 })
+  }
 
   try {
     const razorpay = new Razorpay({ key_id: keyId, key_secret: keySecret })

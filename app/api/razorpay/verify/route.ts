@@ -20,7 +20,7 @@ function safeEqual(a: string, b: string) {
 
 export async function POST(req: NextRequest) {
   const { razorpay_order_id, razorpay_payment_id, razorpay_signature, bookingId } =
-    (await req.json()) as VerifyBody
+    (await req.json().catch(() => ({}))) as VerifyBody
   if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature || !bookingId) {
     return NextResponse.json({ error: 'Bad request' }, { status: 400 })
   }
@@ -67,7 +67,7 @@ export async function POST(req: NextRequest) {
       payment.order_id === razorpay_order_id &&
       Number(order.amount) === expectedPaise &&
       Number(payment.amount) === expectedPaise &&
-      (payment.status === 'captured' || payment.status === 'authorized')
+      payment.status === 'captured'
     if (!valid) {
       console.error('razorpay verify mismatch', { bookingId, razorpay_order_id, razorpay_payment_id })
       return NextResponse.json({ error: 'Payment does not match this booking' }, { status: 400 })
@@ -80,10 +80,16 @@ export async function POST(req: NextRequest) {
   // 4. Idempotent: the same payment is recorded only once.
   const { data: existing } = await supabase
     .from('booking_payments')
-    .select('id')
+    .select('id, booking_id, customer_profile_id')
     .eq('payment_id', razorpay_payment_id)
     .maybeSingle()
-  if (existing || booking.payment_status === 'PAID') {
+  if (existing) {
+    if (existing.booking_id === bookingId && existing.customer_profile_id === user.id) {
+      return NextResponse.json({ success: true })
+    }
+    return NextResponse.json({ error: 'Payment is already linked to another booking' }, { status: 409 })
+  }
+  if (booking.payment_status === 'PAID') {
     return NextResponse.json({ success: true })
   }
 
@@ -106,8 +112,22 @@ export async function POST(req: NextRequest) {
     })
     .select('id')
     .single()
-  // Unique index on payment_id: a parallel duplicate request lands here.
-  if (payErr || !paymentRow) return NextResponse.json({ success: true })
+  // A parallel request may win the unique payment_id insert, but other
+  // database errors must not be reported as a successful payment.
+  if (payErr || !paymentRow) {
+    if (payErr?.code === '23505') {
+      const { data: duplicate } = await supabase
+        .from('booking_payments')
+        .select('booking_id, customer_profile_id')
+        .eq('payment_id', razorpay_payment_id)
+        .maybeSingle()
+      if (duplicate?.booking_id === bookingId && duplicate.customer_profile_id === user.id) {
+        return NextResponse.json({ success: true })
+      }
+    }
+    console.error('booking payment insert failed:', payErr?.message)
+    return NextResponse.json({ error: 'Could not record payment' }, { status: 500 })
+  }
 
   const { error: updateErr } = await supabase
     .from('bookings')

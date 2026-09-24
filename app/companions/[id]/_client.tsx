@@ -21,7 +21,6 @@ type CompanionDetail = {
   languages: string[] | null
   profile_photo_url: string | null
   display_name: string | null
-  age: number | null
 }
 
 type Review = {
@@ -44,19 +43,13 @@ export default function CompanionProfileClient({ id }: { id: string }) {
       const supabase = createClient()
 
       const { data } = await supabase
-        .from('companion_profiles')
-        .select('id, profile_id, bio, city, starting_price, avg_rating, total_reviews, categories, interests, languages, profiles!inner(display_name, profile_photo_url, date_of_birth)')
+        .from('public_companion_profiles')
+        .select('id, profile_id, bio, city, starting_price, avg_rating, total_reviews, categories, interests, languages, display_name, profile_photo_url')
         .eq('id', id)
         .eq('is_visible', true)
         .single()
 
-      if (!data) { setPerson(null); return }
-
-      const profile = data.profiles as unknown as { display_name: string | null; profile_photo_url: string | null; date_of_birth: string | null }
-      let age: number | null = null
-      if (profile.date_of_birth) {
-        age = Math.floor((Date.now() - new Date(profile.date_of_birth).getTime()) / (365.25 * 24 * 60 * 60 * 1000))
-      }
+      if (!data || !data.id || !data.profile_id) { setPerson(null); return }
 
       setPerson({
         id: data.id,
@@ -69,14 +62,13 @@ export default function CompanionProfileClient({ id }: { id: string }) {
         categories: data.categories,
         interests: data.interests,
         languages: data.languages,
-        profile_photo_url: profile.profile_photo_url,
-        display_name: profile.display_name,
-        age,
+        profile_photo_url: data.profile_photo_url,
+        display_name: data.display_name,
       })
 
       const { data: reviewData } = await supabase
         .from('reviews')
-        .select('id, rating, comment, created_at, profiles!inner(display_name)')
+        .select('id, rating, comment, created_at')
         .eq('companion_profile_id', id)
         .eq('is_visible', true)
         .order('created_at', { ascending: false })
@@ -84,8 +76,7 @@ export default function CompanionProfileClient({ id }: { id: string }) {
 
       if (reviewData) {
         setReviews(reviewData.map((r) => {
-          const rp = r.profiles as unknown as { display_name: string | null }
-          return { id: r.id, rating: r.rating, comment: r.comment, created_at: r.created_at, reviewer_name: rp.display_name }
+          return { id: r.id, rating: r.rating, comment: r.comment, created_at: r.created_at, reviewer_name: null }
         }))
       }
 
@@ -164,7 +155,7 @@ export default function CompanionProfileClient({ id }: { id: string }) {
             <div>
               <h1 className="flex items-center gap-2 text-3xl font-semibold tracking-[-.05em]">
                 {person.display_name}
-                {person.age ? <span className="text-xl font-normal text-[#718079]">{person.age}</span> : null}
+
               </h1>
               <p className="mt-1 flex items-center gap-1.5 text-sm text-[#718079]">
                 <MapPin className="size-3.5" />

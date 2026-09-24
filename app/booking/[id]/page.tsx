@@ -90,39 +90,29 @@ export default function BookingPage({ params }: { params: Promise<{ id: string }
     const supabase = createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) { setError('You must be logged in to book.'); setSubmitting(false); return }
-
     if (!date) { setError('Please choose a date.'); setSubmitting(false); return }
     if (!location) { setError('Please enter a meeting location.'); setSubmitting(false); return }
 
-    // Display estimate only; the server recomputes the real price before payment.
-    const { total: amount } = priceBreakdown(companion?.starting_price ?? null, duration, feePercent)
-
-    const { data: booking, error: bookingError } = await supabase
-      .from('bookings')
-      .insert({
-        customer_profile_id: user.id,
-        companion_profile_id: id,
-        status: 'pending',
-        payment_status: 'PENDING',
-        scheduled_date: date,
-        scheduled_time: time,
-        duration_hours: duration,
-        location_description: location,
-        customer_notes: note || null,
-        activity_type: activity || null,
-        price: amount,
-        final_price: amount,
-        total_amount: amount,
-        currency: 'INR',
-      })
-      .select('id')
-      .single()
-
-    if (bookingError || !booking) {
-      setError(bookingError?.message ?? 'Failed to create booking')
+    const bookingRes = await fetch('/api/bookings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        companionId: id,
+        scheduledDate: date,
+        scheduledTime: time,
+        durationHours: duration,
+        location,
+        notes: note,
+        activityType: activity,
+      }),
+    })
+    const bookingData = await bookingRes.json() as { bookingId?: string; error?: string }
+    if (!bookingRes.ok || !bookingData.bookingId) {
+      setError(bookingData.error ?? 'Failed to create booking')
       setSubmitting(false)
       return
     }
+    const bookingIdForPayment = bookingData.bookingId
 
     const razorpayKeyId = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID
     if (!razorpayKeyId) {
@@ -132,7 +122,7 @@ export default function BookingPage({ params }: { params: Promise<{ id: string }
         title: 'Booking request sent',
         body: `Your booking request with ${companion?.display_name ?? 'the companion'} has been sent.`,
       })
-      setBookingId(booking.id)
+      setBookingId(bookingIdForPayment)
       setPaymentDone(false)
       setSubmitting(false)
       return
@@ -141,7 +131,7 @@ export default function BookingPage({ params }: { params: Promise<{ id: string }
     const orderRes = await fetch('/api/razorpay/create-order', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ bookingId: booking.id }),
+      body: JSON.stringify({ bookingId: bookingIdForPayment }),
     })
     const order = await orderRes.json() as { orderId: string; amount: number; currency: string; error?: string }
     if (!orderRes.ok || order.error) { setError(order.error ?? 'Could not start payment'); setSubmitting(false); return }
@@ -158,11 +148,11 @@ export default function BookingPage({ params }: { params: Promise<{ id: string }
         const verifyRes = await fetch('/api/razorpay/verify', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ...response, bookingId: booking.id }),
+          body: JSON.stringify({ ...response, bookingId: bookingIdForPayment }),
         })
         const verifyData = await verifyRes.json() as { success?: boolean; error?: string }
         if (verifyData.success) {
-          setBookingId(booking.id)
+          setBookingId(bookingIdForPayment)
           setPaymentDone(true)
         } else {
           setError('Payment verification failed. Contact support.')

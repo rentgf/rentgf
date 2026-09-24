@@ -68,17 +68,16 @@ export default function DiscoverPage() {
       blockedIds = (blocks ?? []).map((b) => b.blocked_id)
     }
     let dbQuery = supabase
-      .from('companion_profiles')
-      .select('id, profile_id, bio, city, starting_price, avg_rating, total_reviews, categories, languages, profiles!inner(display_name, profile_photo_url)')
+      .from('public_companion_profiles')
+      .select('id, profile_id, bio, city, starting_price, avg_rating, total_reviews, categories, languages, display_name, profile_photo_url')
       .eq('verification_status', 'approved')
       .eq('is_visible', true)
       .order('avg_rating', { ascending: false })
     if (blockedIds.length) dbQuery = dbQuery.not('profile_id', 'in', `(${blockedIds.join(',')})`)
     const { data } = await dbQuery
     if (data) {
-      const mapped: CompanionCard[] = data.map((row) => {
-        const profile = row.profiles as unknown as { display_name: string | null; profile_photo_url: string | null }
-        return { id: row.id, bio: row.bio, city: row.city, starting_price: row.starting_price, avg_rating: row.avg_rating, review_count: row.total_reviews, categories: row.categories, languages: row.languages, display_name: profile.display_name, profile_photo_url: profile.profile_photo_url }
+      const mapped: CompanionCard[] = data.filter((row) => row.id !== null).map((row) => {
+        return { id: row.id as string, bio: row.bio, city: row.city, starting_price: row.starting_price, avg_rating: row.avg_rating, review_count: row.total_reviews, categories: row.categories, languages: row.languages, display_name: row.display_name, profile_photo_url: row.profile_photo_url }
       })
       setCompanions(mapped)
       setCities([...new Set(mapped.map((c) => c.city).filter(Boolean))] as string[])

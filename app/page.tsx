@@ -169,16 +169,15 @@ export default function Page() {
   const load = useCallback(async () => {
     const supabase = createClient()
     const { data } = await supabase
-      .from('companion_profiles')
-      .select('id, bio, city, starting_price, avg_rating, total_reviews, categories, profiles!inner(display_name, profile_photo_url)')
+      .from('public_companion_profiles')
+      .select('id, bio, city, starting_price, avg_rating, total_reviews, categories, display_name, profile_photo_url')
       .eq('verification_status', 'approved')
       .eq('is_visible', true)
       .order('avg_rating', { ascending: false })
       .limit(20)
     if (data) {
-      setCompanions(data.map((row) => {
-        const p = row.profiles as unknown as { display_name: string | null; profile_photo_url: string | null }
-        return { id: row.id, bio: row.bio, city: row.city, starting_price: row.starting_price, avg_rating: row.avg_rating, total_reviews: row.total_reviews, categories: row.categories, display_name: p.display_name, profile_photo_url: p.profile_photo_url }
+      setCompanions(data.filter((row) => row.id !== null).map((row) => {
+        return { id: row.id as string, bio: row.bio, city: row.city, starting_price: row.starting_price, avg_rating: row.avg_rating, total_reviews: row.total_reviews, categories: row.categories, display_name: row.display_name, profile_photo_url: row.profile_photo_url }
       }))
     }
     setLoading(false)

@@ -52,7 +52,7 @@ export async function createBooking({
   durationHours,
   location,
   notes,
-  totalAmount,
+  totalAmount: _clientTotalAmount,
   categoryId,
   activityType,
 }: {
@@ -68,23 +68,40 @@ export async function createBooking({
   activityType?: string
 }): Promise<{ id: string } | null> {
   const supabase = await createServerSupabaseClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user || user.id !== customerProfileId) return null
+  if (!Number.isInteger(durationHours) || durationHours < 1 || durationHours > 8) return null
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(scheduledDate) || scheduledDate < new Date().toISOString().slice(0, 10)) return null
+  if (!/^(?:[1-9]|1[0-2]):[0-5]\d (?:AM|PM)$/.test(scheduledTime)) return null
+  const cleanLocation = location.trim()
+  const cleanNotes = notes?.trim() ?? ''
+  if (!cleanLocation || cleanLocation.length > 500 || cleanNotes.length > 2000) return null
 
-  // Real columns: location_description, customer_notes, price, final_price,
-  // total_amount, payment_status (upper-case). There are no platform_fee /
-  // companion_earnings columns — those belong in the `earnings` table.
+  const { data: companion } = await supabase
+    .from('public_companion_profiles')
+    .select('id, profile_id, starting_price, categories')
+    .eq('id', companionProfileId)
+    .maybeSingle()
+  if (!companion || !companion.id || companion.profile_id === user.id) return null
+  if (activityType && !(companion.categories ?? []).includes(activityType)) return null
+
+  const hourlyPrice = Number(companion.starting_price)
+  if (!Number.isFinite(hourlyPrice) || hourlyPrice <= 0) return null
+  const totalAmount = hourlyPrice * durationHours
+
   const { data, error } = await supabase
     .from('bookings')
     .insert({
-      customer_profile_id: customerProfileId,
-      companion_profile_id: companionProfileId,
+      customer_profile_id: user.id,
+      companion_profile_id: companion.id,
       category_id: categoryId ?? null,
       status: 'pending',
       payment_status: 'PENDING',
       scheduled_date: scheduledDate,
       scheduled_time: scheduledTime,
       duration_hours: durationHours,
-      location_description: location,
-      customer_notes: notes ?? null,
+      location_description: cleanLocation,
+      customer_notes: cleanNotes || null,
       activity_type: activityType ?? null,
       price: totalAmount,
       final_price: totalAmount,
