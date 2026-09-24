@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { isAdminRequest } from '@/lib/admin-auth'
 import { sendCompanionApprovedEmail, sendCompanionRejectedEmail } from '@/lib/email/resend'
 
 export async function POST(req: NextRequest) {
+  // Admin-only: prevents anyone sending fake approval/rejection emails.
+  if (!isAdminRequest(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   try {
     const { type, email, name, reason } = (await req.json()) as {
       type: 'approved' | 'rejected'
