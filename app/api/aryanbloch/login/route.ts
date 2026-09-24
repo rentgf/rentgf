@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { adminSessionToken, safeEqual } from '@/lib/admin-auth'
+import { createAdminToken, safeEqual, SESSION_TTL_MS } from '@/lib/admin-auth'
 
 // Simple per-IP brute-force limit (per server instance).
 const MAX_ATTEMPTS = 5
@@ -20,8 +20,7 @@ export async function POST(req: NextRequest) {
 
   const { password } = (await req.json()) as { password?: string }
   const adminPassword = process.env.ADMIN_PASSWORD
-  const token = adminSessionToken()
-  if (!adminPassword || !token) {
+  if (!adminPassword) {
     return NextResponse.json({ error: 'Admin not configured' }, { status: 500 })
   }
 
@@ -31,13 +30,18 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Wrong password' }, { status: 401 })
   }
 
+  const token = createAdminToken()
+  if (!token) {
+    return NextResponse.json({ error: 'Admin not configured' }, { status: 500 })
+  }
+
   attempts.delete(ip)
   const res = NextResponse.json({ success: true })
   res.cookies.set('admin_session', token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'strict',
-    maxAge: 60 * 60 * 24 * 7, // 7 days
+    maxAge: SESSION_TTL_MS / 1000, // 24 hours, matches token expiry
     path: '/',
   })
   return res
