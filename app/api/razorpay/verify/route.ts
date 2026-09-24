@@ -3,6 +3,7 @@ import crypto from 'crypto'
 import Razorpay from 'razorpay'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
+import { getBookingCommission, splitAmount } from '@/lib/server/commission'
 
 type VerifyBody = {
   razorpay_order_id?: string
@@ -45,7 +46,7 @@ export async function POST(req: NextRequest) {
   const supabase = createAdminSupabaseClient()
   const { data: booking } = await supabase
     .from('bookings')
-    .select('id, customer_profile_id, final_price, payment_status')
+    .select('id, customer_profile_id, companion_profile_id, final_price, payment_status')
     .eq('id', bookingId)
     .maybeSingle()
   if (!booking || booking.customer_profile_id !== user.id) {
@@ -86,27 +87,52 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: true })
   }
 
+  const amount = Number(booking.final_price ?? 0)
+  const commission = await getBookingCommission()
+  const { platformFee, companionAmount } = splitAmount(amount, commission)
+
+  const { data: paymentRow, error: payErr } = await supabase
+    .from('booking_payments')
+    .insert({
+      booking_id: bookingId,
+      customer_profile_id: booking.customer_profile_id,
+      amount,
+      currency: 'INR',
+      platform_fee: platformFee,
+      companion_amount: companionAmount,
+      payment_provider: 'razorpay',
+      payment_id: razorpay_payment_id,
+      status: 'completed',
+    })
+    .select('id')
+    .single()
+  // Unique index on payment_id: a parallel duplicate request lands here.
+  if (payErr || !paymentRow) return NextResponse.json({ success: true })
+
   const { error: updateErr } = await supabase
     .from('bookings')
     .update({ status: 'confirmed', payment_status: 'PAID' })
     .eq('id', bookingId)
   if (updateErr) return NextResponse.json({ error: 'Could not update booking' }, { status: 500 })
 
-  await supabase.from('booking_payments').insert({
-    booking_id: bookingId,
-    customer_profile_id: booking.customer_profile_id,
-    amount: booking.final_price ?? 0,
-    payment_provider: 'razorpay',
-    payment_id: razorpay_payment_id,
-    status: 'completed',
+  await supabase.from('earnings').insert({
+    companion_profile_id: booking.companion_profile_id,
+    booking_payment_id: paymentRow.id,
+    amount: companionAmount,
+    currency: 'INR',
+    status: 'pending',
   })
 
-  await supabase.from('notifications').insert({
-    profile_id: user.id,
-    type: 'booking',
-    title: 'Payment successful',
-    body: 'Your payment is confirmed and your booking is now active.',
-  })
+  const { data: cp } = await supabase
+    .from('companion_profiles')
+    .select('profile_id')
+    .eq('id', booking.companion_profile_id)
+    .maybeSingle()
+
+  await supabase.from('notifications').insert([
+    { profile_id: user.id, type: 'booking', title: 'Payment successful', body: 'Your payment is confirmed and your booking is now active.' },
+    ...(cp ? [{ profile_id: cp.profile_id, type: 'booking', title: 'New paid booking', body: `You have a new confirmed booking. Your earning: ₹${companionAmount}.` }] : []),
+  ])
 
   return NextResponse.json({ success: true })
 }
