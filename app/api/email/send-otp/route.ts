@@ -1,9 +1,10 @@
+import crypto from 'crypto'
 import { NextRequest, NextResponse } from 'next/server'
 import { sendOtpEmail } from '@/lib/email/resend'
-import { createServerSupabaseClient } from '@/lib/supabase/server'
+import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 
 function generateOtp() {
-  return String(Math.floor(100000 + Math.random() * 900000))
+  return String(crypto.randomInt(100000, 1000000))
 }
 
 export async function POST(req: NextRequest) {
@@ -21,17 +22,22 @@ export async function POST(req: NextRequest) {
     const otp = generateOtp()
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString() // 10 min
 
-    // Store OTP in Supabase
-    const supabase = await createServerSupabaseClient()
-    await supabase.from('email_otps').upsert(
-      { email, otp, expires_at: expiresAt, used: false },
-      { onConflict: 'email' },
-    )
+    // issue_email_otp validates input and enforces a 60s resend cooldown.
+    const supabase = createAdminSupabaseClient()
+    const { data: issued, error } = await supabase.rpc('issue_email_otp', {
+      p_email: email.trim().toLowerCase(),
+      p_otp: otp,
+      p_expires_at: expiresAt,
+    })
+    if (error) {
+      console.error('send-otp error: issue_email_otp failed:', error)
+      return NextResponse.json({ error: 'Failed to send OTP' }, { status: 500 })
+    }
+    if (!issued) {
+      return NextResponse.json({ error: 'Please wait a minute before requesting another code.' }, { status: 429 })
+    }
 
-    // Send via Resend. The Resend SDK resolves with { data, error } instead of
-    // throwing on API failures (e.g. unverified sender domain, invalid API key),
-    // so we must check `error` explicitly or a failed send is silently ignored
-    // and the client is told the code was sent when it was not.
+    // Resend resolves with { data, error } instead of throwing, so check `error`.
     const { error: sendError } = await sendOtpEmail(email, name, otp)
     if (sendError) {
       console.error('send-otp error: Resend failed to send email:', sendError)
