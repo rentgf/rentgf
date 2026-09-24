@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { createClient } from '@/lib/supabase/client'
 
 type Booking = {
   id: string
@@ -17,56 +16,30 @@ type Booking = {
 
 type StatusFilter = 'all' | 'pending' | 'confirmed' | 'cancelled'
 
+const STATUS_TABS: { key: StatusFilter; label: string }[] = [
+  { key: 'all', label: 'All' },
+  { key: 'pending', label: 'Pending' },
+  { key: 'confirmed', label: 'Confirmed' },
+  { key: 'cancelled', label: 'Cancelled' },
+]
+
 export default function AdminBookingsPage() {
   const [bookings, setBookings] = useState<Booking[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
   const [filter, setFilter] = useState<StatusFilter>('all')
 
   useEffect(() => {
-    async function load() {
-      const supabase = createClient()
-      // `bookings` has no meaningful `total_amount` value used by the app.
-      // The actual charged amount after discounts is `final_price`.
-      const { data } = await supabase
-        .from('bookings')
-        .select(`
-          id, status, payment_status, final_price, scheduled_date, scheduled_time, created_at,
-          customer:profiles!customer_profile_id(display_name),
-          companion:companion_profiles!companion_profile_id(profiles!inner(display_name))
-        `)
-        .order('created_at', { ascending: false })
-        .limit(100)
-
-      if (data) {
-        setBookings(data.map((b) => {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const customerProfile = b.customer as any
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const companionProfile = b.companion as any
-          return {
-            id: b.id,
-            status: b.status,
-            payment_status: b.payment_status,
-            final_price: b.final_price,
-            scheduled_date: b.scheduled_date,
-            scheduled_time: b.scheduled_time,
-            created_at: b.created_at,
-            customer_name: customerProfile?.display_name ?? null,
-            companion_name: companionProfile?.profiles?.display_name ?? null,
-          }
-        }))
-      }
-      setLoading(false)
-    }
-    load()
+    // Server API uses the service role; the browser client is blocked by RLS for the admin.
+    fetch('/api/aryanbloch/bookings', { cache: 'no-store' })
+      .then(async (res) => {
+        const json = (await res.json()) as { bookings?: Booking[]; error?: string }
+        if (!res.ok) setError(json.error ?? 'Could not load bookings')
+        setBookings(json.bookings ?? [])
+      })
+      .catch(() => setError('Could not load bookings'))
+      .finally(() => setLoading(false))
   }, [])
-
-  const STATUS_TABS: { key: StatusFilter; label: string }[] = [
-    { key: 'all', label: 'All' },
-    { key: 'pending', label: 'Pending' },
-    { key: 'confirmed', label: 'Confirmed' },
-    { key: 'cancelled', label: 'Cancelled' },
-  ]
 
   const filtered = filter === 'all' ? bookings : bookings.filter((b) => b.status === filter)
 
@@ -75,13 +48,13 @@ export default function AdminBookingsPage() {
       <h1 className="text-2xl font-semibold text-[#173f35]">Bookings</h1>
       <p className="mt-1 text-sm text-[#68756e]">All platform bookings.</p>
 
-      <div className="mt-5 flex gap-2">
+      <div className="mt-5 flex flex-wrap gap-2">
         {STATUS_TABS.map(({ key, label }) => (
           <button
             key={key}
             type="button"
             onClick={() => setFilter(key)}
-            className={`rounded-full px-4 py-2 text-sm font-semibold ${
+            className={`cursor-pointer rounded-full px-4 py-2 text-sm font-semibold ${
               filter === key ? 'bg-[#173f35] text-white' : 'bg-white border border-[#e9e2d9] text-[#52645b]'
             }`}
           >
@@ -89,6 +62,8 @@ export default function AdminBookingsPage() {
           </button>
         ))}
       </div>
+
+      {error && <p className="mt-4 rounded-xl bg-[#fff3ed] px-4 py-3 text-sm text-[#a04f39]">{error}</p>}
 
       <div className="mt-5 overflow-hidden rounded-2xl border border-[#e9e2d9] bg-white">
         {loading ? (
@@ -120,7 +95,7 @@ export default function AdminBookingsPage() {
                       {b.scheduled_time ? ` ${b.scheduled_time}` : ''}
                     </td>
                     <td className="px-4 py-3 font-medium">
-                      {b.final_price ? `₹${b.final_price.toLocaleString('en-IN')}` : '—'}
+                      {b.final_price ? `₹${Number(b.final_price).toLocaleString('en-IN')}` : '—'}
                     </td>
                     <td className="px-4 py-3">
                       <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
