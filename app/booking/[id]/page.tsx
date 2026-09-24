@@ -25,12 +25,13 @@ declare global {
   }
 }
 
-const PLATFORM_FEE_RATE = 0.15
+// Fallback only; the live value is set by admin in platform_settings.
+const DEFAULT_FEE_PERCENT = 15
 const DEFAULT_HOURLY_PRICE = 999
 
-function priceBreakdown(hourlyPrice: number | null, hours: number) {
+function priceBreakdown(hourlyPrice: number | null, hours: number, feePercent: number) {
   const total = (hourlyPrice ?? DEFAULT_HOURLY_PRICE) * hours
-  const platformFee = Math.round(total * PLATFORM_FEE_RATE)
+  const platformFee = Math.round((total * feePercent) / 100)
   return { total, platformFee, companionShare: total - platformFee }
 }
 
@@ -40,6 +41,7 @@ export default function BookingPage({ params }: { params: Promise<{ id: string }
   const { id } = use(params)
   const [companion, setCompanion] = useState<CompanionInfo | null>(null)
   const [loading, setLoading] = useState(true)
+  const [feePercent, setFeePercent] = useState(DEFAULT_FEE_PERCENT)
   const [step, setStep] = useState<BookingStep>('details')
   const [date, setDate] = useState('')
   const [time, setTime] = useState('6:00 PM')
@@ -55,11 +57,16 @@ export default function BookingPage({ params }: { params: Promise<{ id: string }
   useEffect(() => {
     async function load() {
       const supabase = createClient()
-      const { data } = await supabase
-        .from('companion_profiles')
-        .select('id, bio, city, starting_price, categories, profiles!inner(display_name, profile_photo_url)')
-        .eq('id', id)
-        .single()
+      const [{ data }, { data: fee }] = await Promise.all([
+        supabase
+          .from('companion_profiles')
+          .select('id, bio, city, starting_price, categories, profiles!inner(display_name, profile_photo_url)')
+          .eq('id', id)
+          .single(),
+        supabase.from('platform_settings').select('value').eq('key', 'booking_commission_percent').maybeSingle(),
+      ])
+      const parsedFee = Number(fee?.value)
+      if (Number.isFinite(parsedFee) && parsedFee >= 0 && parsedFee <= 100) setFeePercent(parsedFee)
       if (data) {
         const profiles = data.profiles as unknown as { display_name: string | null; profile_photo_url: string | null }
         setCompanion({
@@ -88,7 +95,8 @@ export default function BookingPage({ params }: { params: Promise<{ id: string }
     if (!date) { setError('Please choose a date.'); setSubmitting(false); return }
     if (!location) { setError('Please enter a meeting location.'); setSubmitting(false); return }
 
-    const { total: amount } = priceBreakdown(companion?.starting_price ?? null, duration)
+    // Display estimate only; the server recomputes the real price before payment.
+    const { total: amount } = priceBreakdown(companion?.starting_price ?? null, duration, feePercent)
 
     const { data: booking, error: bookingError } = await supabase
       .from('bookings')
@@ -134,10 +142,10 @@ export default function BookingPage({ params }: { params: Promise<{ id: string }
     const orderRes = await fetch('/api/razorpay/create-order', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ amount, bookingId: booking.id }),
+      body: JSON.stringify({ bookingId: booking.id }),
     })
     const order = await orderRes.json() as { orderId: string; amount: number; currency: string; error?: string }
-    if (order.error) { setError(order.error); setSubmitting(false); return }
+    if (!orderRes.ok || order.error) { setError(order.error ?? 'Could not start payment'); setSubmitting(false); return }
 
     const rzp = new window.Razorpay({
       key: razorpayKeyId,
@@ -170,7 +178,7 @@ export default function BookingPage({ params }: { params: Promise<{ id: string }
   if (loading) return <MobileShell title="Booking"><div className="p-8 text-center text-sm text-[#738078]">Loading…</div></MobileShell>
   if (!companion) return <MobileShell title="Booking"><main className="mx-auto max-w-xl px-4 py-12"><h1 className="text-2xl font-semibold">This companion is not available</h1><Link href="/discover" className="mt-6 inline-flex rounded-full bg-[#173f35] px-5 py-3 text-sm font-semibold text-white">Back to discover</Link></main></MobileShell>
 
-  const { total: amount, platformFee, companionShare } = priceBreakdown(companion.starting_price, duration)
+  const { total: amount, platformFee, companionShare } = priceBreakdown(companion.starting_price, duration, feePercent)
 
   if (bookingId) {
     return (
@@ -274,7 +282,7 @@ export default function BookingPage({ params }: { params: Promise<{ id: string }
               <div className="flex justify-between gap-4"><span className="text-[#738078]">Location</span><span className="font-semibold text-right">{location}</span></div>
               <div className="border-t border-[#eee9e2] pt-4">
                 <div className="flex justify-between text-base font-semibold"><span>Total</span><span>{inr(amount)}</span></div>
-                <p className="mt-1 text-xs text-[#738078]">Includes {inr(platformFee)} platform fee (15%).</p>
+                <p className="mt-1 text-xs text-[#738078]">Includes {inr(platformFee)} platform fee ({feePercent}%).</p>
               </div>
             </div>
             <p className="mt-5 flex gap-2 rounded-2xl bg-[#f5f8f3] p-4 text-sm leading-6 text-[#52665a]">
@@ -295,7 +303,7 @@ export default function BookingPage({ params }: { params: Promise<{ id: string }
             </div>
             <div className="mt-5 rounded-2xl border border-[#e9e2d9] p-4 text-sm space-y-1.5">
               <div className="flex justify-between"><span className="text-[#738078]">Companion fee</span><span>{inr(companionShare)}</span></div>
-              <div className="flex justify-between"><span className="text-[#738078]">Platform fee (15%)</span><span>{inr(platformFee)}</span></div>
+              <div className="flex justify-between"><span className="text-[#738078]">Platform fee ({feePercent}%)</span><span>{inr(platformFee)}</span></div>
               <div className="flex justify-between border-t border-[#eee9e2] pt-2 font-semibold text-base"><span>Total</span><span>{inr(amount)}</span></div>
             </div>
             {error && <p className="mt-4 rounded-xl bg-[#fff3ed] px-4 py-3 text-sm text-[#a04f39]">{error}</p>}
