@@ -27,7 +27,8 @@ type CompanionData = {
 const CATEGORIES = ['Coffee & conversation', 'Dining', 'Movies & events', 'Travel companion', 'Shopping', 'Fitness & outdoors', 'Study buddy', 'Gaming']
 const CITIES = ['Delhi', 'Mumbai', 'Bengaluru', 'Hyderabad', 'Chennai', 'Kolkata', 'Pune', 'Jaipur', 'Ahmedabad', 'Surat']
 const LANGUAGES = ['Hindi', 'English', 'Tamil', 'Telugu', 'Kannada', 'Bengali', 'Marathi', 'Gujarati']
-const PLATFORM_FEE_RATE = 0.15
+// Fallback only; live value is admin-set in platform_settings.
+const DEFAULT_FEE_PERCENT = 15
 
 export default function CompanionDashboardPage() {
   const router = useRouter()
@@ -37,6 +38,7 @@ export default function CompanionDashboardPage() {
   const [pendingCount, setPendingCount] = useState(0)
   const [upcomingCount, setUpcomingCount] = useState(0)
   const [earnings, setEarnings] = useState(0)
+  const [feePercent, setFeePercent] = useState(DEFAULT_FEE_PERCENT)
 
   // Edit form state
   const [bio, setBio] = useState('')
@@ -53,20 +55,23 @@ export default function CompanionDashboardPage() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) { router.push('/login?redirectTo=/companion'); return }
 
-    // `companion_profiles` is keyed by its own `id`, linked to the user via
-    // `profile_id` (not `id`). Review state is `verification_status`,
-    // reviews are `total_reviews`, and visibility is `is_visible`.
-    const { data: cp } = await supabase
-      .from('companion_profiles')
-      .select('id, bio, city, starting_price, avg_rating, total_reviews, categories, languages, verification_status, is_visible, profiles!inner(display_name, email, profile_photo_url)')
-      .eq('profile_id', user.id)
-      .single()
+    const [{ data: cp }, { data: feeRow }] = await Promise.all([
+      supabase
+        .from('companion_profiles')
+        .select('id, bio, city, starting_price, avg_rating, total_reviews, categories, languages, verification_status, is_visible, profiles!inner(display_name, email, profile_photo_url)')
+        .eq('profile_id', user.id)
+        .single(),
+      supabase.from('platform_settings').select('value').eq('key', 'booking_commission_percent').maybeSingle(),
+    ])
 
     if (!cp) {
-      // No companion profile → redirect to apply
       router.push('/become-companion')
       return
     }
+
+    const parsedFee = Number(feeRow?.value)
+    const fee = Number.isFinite(parsedFee) && parsedFee >= 0 && parsedFee <= 100 ? parsedFee : DEFAULT_FEE_PERCENT
+    setFeePercent(fee)
 
     const { data: bookingRows } = await supabase
       .from('bookings')
@@ -78,8 +83,8 @@ export default function CompanionDashboardPage() {
     setPendingCount(rows.filter((b) => b.status === 'pending').length)
     setUpcomingCount(rows.filter((b) => b.status === 'accepted' || b.status === 'confirmed').length)
     setEarnings(rows.filter((b) => b.status === 'completed').reduce((sum, b) => {
-      const total = b.final_price ?? 0
-      return sum + total - Math.round(total * PLATFORM_FEE_RATE)
+      const total = Number(b.final_price ?? 0)
+      return sum + total - Math.round((total * fee) / 100)
     }, 0))
 
     const p = cp.profiles as unknown as { display_name: string | null; email: string | null; profile_photo_url: string | null }
@@ -107,6 +112,8 @@ export default function CompanionDashboardPage() {
 
   async function saveProfile() {
     if (!data) return
+    const priceNum = Number(price)
+    if (!Number.isFinite(priceNum) || priceNum < 500) { setSaveMsg('Error: minimum rate is ₹500/hr.'); return }
     setSaving(true)
     setSaveMsg('')
     const supabase = createClient()
@@ -115,7 +122,7 @@ export default function CompanionDashboardPage() {
     const [cpResult, pResult] = await Promise.all([
       supabase.from('companion_profiles').update({
         bio, city,
-        starting_price: Number(price),
+        starting_price: priceNum,
         categories,
         languages,
       }).eq('id', data.id),
@@ -136,8 +143,8 @@ export default function CompanionDashboardPage() {
     if (!data) return
     const supabase = createClient()
     const newVisible = !data.is_visible
-    await supabase.from('companion_profiles').update({ is_visible: newVisible }).eq('id', data.id)
-    setData({ ...data, is_visible: newVisible })
+    const { error } = await supabase.from('companion_profiles').update({ is_visible: newVisible }).eq('id', data.id)
+    if (!error) setData({ ...data, is_visible: newVisible })
   }
 
   async function signOut() {
@@ -168,7 +175,6 @@ export default function CompanionDashboardPage() {
     <MobileShell title="Companion studio">
       <main className="mx-auto max-w-2xl space-y-4 px-4 pb-16 pt-6 text-[#173f35]">
 
-        {/* Greeting */}
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[.18em] text-[#d17b58]">Your studio</p>
@@ -180,7 +186,6 @@ export default function CompanionDashboardPage() {
           </button>
         </div>
 
-        {/* Status banner */}
         {!isApproved && (
           <div className="flex items-start gap-3 rounded-2xl border border-[#f0d9b5] bg-[#fff8ed] p-4">
             <Clock className="mt-0.5 size-5 shrink-0 text-[#c47d2a]" />
@@ -197,7 +202,6 @@ export default function CompanionDashboardPage() {
           </div>
         )}
 
-        {/* Earnings overview */}
         {!editing && (
           <section className="grid grid-cols-3 gap-3">
             {[
@@ -213,7 +217,6 @@ export default function CompanionDashboardPage() {
           </section>
         )}
 
-        {/* Pending requests callout */}
         {pendingCount > 0 && !editing && (
           <Link href="/companion/bookings" className="flex items-center justify-between gap-3 rounded-2xl bg-[#173f35] p-4 text-white">
             <div className="flex items-center gap-3">
@@ -224,7 +227,6 @@ export default function CompanionDashboardPage() {
           </Link>
         )}
 
-        {/* Profile card */}
         <section className="rounded-[22px] border border-[#e9e2d9] bg-white p-5">
           <div className="flex items-center gap-4">
             <div className="relative">
@@ -259,11 +261,10 @@ export default function CompanionDashboardPage() {
             </button>
           </div>
 
-          {/* Stats */}
           {isApproved && !editing && (
             <div className="mt-5 grid grid-cols-3 divide-x divide-[#f0ebe4] rounded-xl bg-[#f5f3ef] text-center">
               {[
-                ['₹' + (data.starting_price ?? 0).toLocaleString('en-IN'), 'per hour'],
+                ['₹' + Number(data.starting_price ?? 0).toLocaleString('en-IN'), 'per hour'],
                 [data.city ?? '–', 'city'],
                 [data.categories?.length ?? 0, 'activities'],
               ].map(([val, label]) => (
@@ -275,7 +276,6 @@ export default function CompanionDashboardPage() {
             </div>
           )}
 
-          {/* Availability toggle */}
           {isApproved && !editing && (
             <div className="mt-4 flex items-center justify-between rounded-xl bg-[#f5f3ef] px-4 py-3">
               <div>
@@ -294,7 +294,6 @@ export default function CompanionDashboardPage() {
           )}
         </section>
 
-        {/* Edit form */}
         {editing && (
           <section className="space-y-5 rounded-[22px] border border-[#e9e2d9] bg-white p-5">
             <h2 className="font-semibold">Edit profile</h2>
@@ -326,6 +325,7 @@ export default function CompanionDashboardPage() {
               Hourly rate (₹)
               <input type="number" min="500" step="100" value={price} onChange={(e) => setPrice(e.target.value)}
                 className="mt-2 w-full rounded-xl border border-[#e5e1da] px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-[#bdd2c7]" />
+              <span className="mt-1 block text-xs text-[#9aa49d]">You receive this minus the {feePercent}% platform fee.</span>
             </label>
 
             <div>
@@ -371,12 +371,11 @@ export default function CompanionDashboardPage() {
           </section>
         )}
 
-        {/* Quick links */}
         {!editing && (
           <section className="divide-y divide-[#f5f1ec] rounded-[22px] border border-[#e9e2d9] bg-white">
             {[
               { icon: BookOpen, label: 'Booking requests', sub: pendingCount > 0 ? `${pendingCount} waiting for your response` : 'Manage pending & accepted bookings', href: '/companion/bookings' },
-              { icon: CircleDollarSign, label: 'Earnings', sub: 'Earnings per booking (after 15% fee)', href: '/companion/bookings' },
+              { icon: CircleDollarSign, label: 'Earnings', sub: `Earnings per booking (after ${feePercent}% fee)`, href: '/companion/bookings' },
               { icon: ShieldCheck, label: 'Verification', sub: 'ID & document status', href: '/companion/verification' },
             ].map(({ icon: Icon, label, sub, href }) => (
               <Link key={label} href={href} className="flex items-center gap-4 px-5 py-4">
@@ -393,7 +392,6 @@ export default function CompanionDashboardPage() {
           </section>
         )}
 
-        {/* View public profile */}
         {isApproved && !editing && (
           <Link href={`/companions/${data.id}`} className="flex items-center justify-center gap-2 rounded-2xl border border-[#cce3cc] bg-[#f4faf4] py-3.5 text-sm font-semibold text-[#4e8068]">
             View my public profile →
