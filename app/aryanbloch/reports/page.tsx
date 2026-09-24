@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react'
 import { AlertTriangle, CheckCircle2 } from 'lucide-react'
-import { createClient } from '@/lib/supabase/client'
 
 type Report = {
   id: string
@@ -17,41 +16,27 @@ type Report = {
 export default function AdminReportsPage() {
   const [reports, setReports] = useState<Report[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
 
-  async function load() {
-    const supabase = createClient()
-    // `reports` has no `reason`/`reporter_profile_id`/`reported_profile_id` columns.
-    // The real columns are `category`, `reporter_id`, and `reported_user_id`.
-    const { data } = await supabase
-      .from('reports')
-      .select('id, category, description, status, created_at, reporter:profiles!reporter_id(display_name), reported:profiles!reported_user_id(display_name)')
-      .order('created_at', { ascending: false })
-      .limit(50)
-    if (data) {
-      setReports(data.map((r) => {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const reporter = r.reporter as any
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const reported = r.reported as any
-        return {
-          id: r.id,
-          category: r.category,
-          description: r.description,
-          status: r.status,
-          created_at: r.created_at,
-          reporter_name: reporter?.display_name ?? null,
-          reported_name: reported?.display_name ?? null,
-        }
-      }))
-    }
-    setLoading(false)
-  }
-
-  useEffect(() => { load() }, [])
+  useEffect(() => {
+    // Server API uses the service role; the browser client is blocked by RLS for the admin.
+    fetch('/api/aryanbloch/reports', { cache: 'no-store' })
+      .then(async (res) => {
+        const json = (await res.json()) as { reports?: Report[]; error?: string }
+        if (!res.ok) setError(json.error ?? 'Could not load reports')
+        setReports(json.reports ?? [])
+      })
+      .catch(() => setError('Could not load reports'))
+      .finally(() => setLoading(false))
+  }, [])
 
   async function resolve(reportId: string) {
-    const supabase = createClient()
-    await supabase.from('reports').update({ status: 'resolved' }).eq('id', reportId)
+    const res = await fetch('/api/aryanbloch/reports', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ reportId }),
+    })
+    if (!res.ok) { setError('Could not update report'); return }
     setReports((prev) => prev.map((r) => r.id === reportId ? { ...r, status: 'resolved' } : r))
   }
 
@@ -59,6 +44,8 @@ export default function AdminReportsPage() {
     <div className="p-6">
       <h1 className="text-2xl font-semibold text-[#173f35]">Reports</h1>
       <p className="mt-1 text-sm text-[#68756e]">User safety reports requiring review.</p>
+
+      {error && <p className="mt-4 rounded-xl bg-[#fff3ed] px-4 py-3 text-sm text-[#a04f39]">{error}</p>}
 
       <div className="mt-5">
         {loading ? (
@@ -87,16 +74,15 @@ export default function AdminReportsPage() {
                       <p className="mt-2 text-xs text-[#9aa49d]">{report.created_at ? new Date(report.created_at).toLocaleString() : ''}</p>
                     </div>
                   </div>
-                  {report.status !== 'resolved' && (
+                  {report.status !== 'resolved' ? (
                     <button
                       type="button"
                       onClick={() => resolve(report.id)}
-                      className="shrink-0 rounded-full bg-[#edf4ed] px-3 py-1.5 text-xs font-semibold text-[#4e8068]"
+                      className="shrink-0 cursor-pointer rounded-full bg-[#edf4ed] px-3 py-1.5 text-xs font-semibold text-[#4e8068]"
                     >
                       Mark resolved
                     </button>
-                  )}
-                  {report.status === 'resolved' && (
+                  ) : (
                     <span className="shrink-0 rounded-full bg-[#edf4ed] px-3 py-1.5 text-xs font-semibold text-[#4e8068]">Resolved</span>
                   )}
                 </div>
