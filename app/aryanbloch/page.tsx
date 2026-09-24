@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react'
 import { BookOpen, CheckCircle2, Clock, Users } from 'lucide-react'
-import { createClient } from '@/lib/supabase/client'
 
 type Stats = {
   totalUsers: number
@@ -11,32 +10,23 @@ type Stats = {
   confirmedBookings: number
 }
 
+type RecentBooking = { id: string; status: string; final_price: number | null; created_at: string | null }
+
 export default function AdminOverviewPage() {
   const [stats, setStats] = useState<Stats | null>(null)
-  const [recentBookings, setRecentBookings] = useState<{ id: string; status: string; final_price: number | null; created_at: string | null }[]>([])
+  const [recentBookings, setRecentBookings] = useState<RecentBooking[]>([])
+  const [error, setError] = useState('')
 
   useEffect(() => {
-    async function load() {
-      const supabase = createClient()
-      const [usersRes, pendingRes, bookingsRes, confirmedRes, recentRes] = await Promise.all([
-        supabase.from('profiles').select('id', { count: 'exact', head: true }),
-        // `companion_profiles` has no `is_approved` column. Pending review state is
-        // tracked via `verification_status` (not_submitted | pending | approved | rejected | suspended).
-        supabase.from('companion_profiles').select('id', { count: 'exact', head: true }).eq('verification_status', 'pending'),
-        supabase.from('bookings').select('id', { count: 'exact', head: true }),
-        supabase.from('bookings').select('id', { count: 'exact', head: true }).eq('status', 'confirmed'),
-        // `total_amount` is not a reliable value here; `final_price` is the actual charged amount.
-        supabase.from('bookings').select('id, status, final_price, created_at').order('created_at', { ascending: false }).limit(5),
-      ])
-      setStats({
-        totalUsers: usersRes.count ?? 0,
-        pendingCompanions: pendingRes.count ?? 0,
-        totalBookings: bookingsRes.count ?? 0,
-        confirmedBookings: confirmedRes.count ?? 0,
+    // Server API uses the service role; the browser client is blocked by RLS for the admin.
+    fetch('/api/aryanbloch/bookings', { cache: 'no-store' })
+      .then(async (res) => {
+        const json = (await res.json()) as { stats?: Stats; bookings?: RecentBooking[]; error?: string }
+        if (!res.ok || !json.stats) { setError(json.error ?? 'Could not load stats'); return }
+        setStats(json.stats)
+        setRecentBookings((json.bookings ?? []).slice(0, 5))
       })
-      setRecentBookings(recentRes.data ?? [])
-    }
-    load()
+      .catch(() => setError('Could not load stats'))
   }, [])
 
   const cards = [
@@ -50,6 +40,8 @@ export default function AdminOverviewPage() {
     <div className="p-6">
       <h1 className="text-2xl font-semibold text-[#173f35]">Overview</h1>
       <p className="mt-1 text-sm text-[#68756e]">Platform stats at a glance.</p>
+
+      {error && <p className="mt-4 rounded-xl bg-[#fff3ed] px-4 py-3 text-sm text-[#a04f39]">{error}</p>}
 
       <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {cards.map(({ label, value, icon: Icon, color, bg }) => (
@@ -65,7 +57,7 @@ export default function AdminOverviewPage() {
 
       <div className="mt-8">
         <h2 className="font-semibold text-[#173f35]">Recent bookings</h2>
-        <div className="mt-3 overflow-hidden rounded-2xl border border-[#e9e2d9] bg-white">
+        <div className="mt-3 overflow-x-auto rounded-2xl border border-[#e9e2d9] bg-white">
           {recentBookings.length === 0 ? (
             <p className="p-6 text-sm text-[#68756e]">No bookings yet.</p>
           ) : (
@@ -89,7 +81,7 @@ export default function AdminOverviewPage() {
                         'bg-[#f5f0e9] text-[#6e5a3c]'
                       }`}>{b.status}</span>
                     </td>
-                    <td className="px-4 py-3">{b.final_price ? `₹${b.final_price.toLocaleString('en-IN')}` : '—'}</td>
+                    <td className="px-4 py-3">{b.final_price ? `₹${Number(b.final_price).toLocaleString('en-IN')}` : '—'}</td>
                     <td className="px-4 py-3 text-[#738078]">{b.created_at ? new Date(b.created_at).toLocaleDateString() : '—'}</td>
                   </tr>
                 ))}
