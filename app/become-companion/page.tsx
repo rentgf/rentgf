@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { CheckCircle2, ChevronRight, ShieldCheck, Star, Users } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { Logo } from '@/components/logo'
@@ -12,12 +12,14 @@ type Step = 'intro' | 'personal' | 'profile' | 'submitted'
 const CATEGORIES = ['Coffee & conversation', 'Dining', 'Movies & events', 'Travel companion', 'Shopping', 'Fitness & outdoors', 'Study buddy', 'Gaming']
 const CITIES = ['Delhi', 'Mumbai', 'Bengaluru', 'Hyderabad', 'Chennai', 'Kolkata', 'Pune', 'Jaipur', 'Ahmedabad', 'Surat']
 const LANGUAGES = ['Hindi', 'English', 'Tamil', 'Telugu', 'Kannada', 'Bengali', 'Marathi', 'Gujarati']
+const MIN_PRICE = 500
 
 export default function BecomeCompanionPage() {
   const router = useRouter()
   const [step, setStep] = useState<Step>('intro')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
+  const [feePercent, setFeePercent] = useState(15)
 
   // Personal
   const [displayName, setDisplayName] = useState('')
@@ -32,6 +34,15 @@ export default function BecomeCompanionPage() {
   const [selectedLanguages, setSelectedLanguages] = useState<string[]>([])
   const [photoUrl, setPhotoUrl] = useState('')
 
+  useEffect(() => {
+    // Show the admin-configured platform fee.
+    createClient().from('platform_settings').select('value').eq('key', 'booking_commission_percent').maybeSingle()
+      .then(({ data }) => {
+        const n = Number(data?.value)
+        if (Number.isFinite(n) && n >= 0 && n <= 100) setFeePercent(n)
+      })
+  }, [])
+
   function toggleItem(list: string[], setList: (v: string[]) => void, item: string) {
     setList(list.includes(item) ? list.filter((i) => i !== item) : [...list, item])
   }
@@ -42,13 +53,16 @@ export default function BecomeCompanionPage() {
       setError('Please fill in all required fields.')
       return
     }
+    const priceNum = Number(price)
+    if (!Number.isFinite(priceNum) || priceNum < MIN_PRICE) {
+      setError(`Minimum hourly rate is ₹${MIN_PRICE}.`)
+      return
+    }
     setSubmitting(true)
     const supabase = createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) { router.push('/login?redirectTo=/become-companion'); return }
 
-    // Update profile. `profiles` has no `gender` column, and `profile_photo_url`
-    // lives on `profiles`, not `companion_profiles`.
     const { error: profileError } = await supabase.from('profiles').update({
       display_name: displayName || undefined,
       date_of_birth: dob || undefined,
@@ -57,14 +71,12 @@ export default function BecomeCompanionPage() {
     }).eq('id', user.id)
     if (profileError) { setError(profileError.message); setSubmitting(false); return }
 
-    // Create companion profile. `companion_profiles` has no `is_approved` or
-    // `availability_status` columns — review state is `verification_status`,
-    // and it is keyed by `profile_id` (not `id`).
+    // Review state is forced to pending/hidden by a database trigger.
     const { error: cpError } = await supabase.from('companion_profiles').upsert({
       profile_id: user.id,
       bio,
       city,
-      starting_price: Number(price),
+      starting_price: priceNum,
       categories: selectedCategories,
       languages: selectedLanguages,
       verification_status: 'pending',
@@ -73,10 +85,9 @@ export default function BecomeCompanionPage() {
 
     if (cpError) { setError(cpError.message); setSubmitting(false); return }
 
-    // Update role
-    await supabase.from('profiles').update({ role: 'companion' }).eq('id', user.id)
+    const { error: roleError } = await supabase.from('profiles').update({ role: 'companion' }).eq('id', user.id)
+    if (roleError) { setError(roleError.message); setSubmitting(false); return }
 
-    // Create notification
     await supabase.from('notifications').insert({
       profile_id: user.id,
       type: 'verification',
@@ -94,9 +105,9 @@ export default function BecomeCompanionPage() {
         <div className="w-full max-w-md rounded-3xl border border-[#cfe2d3] bg-[#f4faf4] p-8 text-center">
           <CheckCircle2 className="mx-auto size-12 text-[#4e8068]" />
           <h1 className="mt-5 text-2xl font-semibold text-[#173f35]">Application submitted!</h1>
-          <p className="mt-3 text-sm leading-6 text-[#52665a]">Our team will review your profile within 48 hours. Once approved, your profile will go live on the discover page.</p>
-          <Link href="/dashboard" className="mt-6 inline-flex rounded-full bg-[#173f35] px-5 py-3 text-sm font-semibold text-white">
-            Go to dashboard
+          <p className="mt-3 text-sm leading-6 text-[#52665a]">Our team will review your profile within 48 hours. Upload your ID on the verification page to speed this up.</p>
+          <Link href="/companion/verification" className="mt-6 inline-flex rounded-full bg-[#173f35] px-5 py-3 text-sm font-semibold text-white">
+            Upload ID documents
           </Link>
         </div>
       </main>
@@ -125,7 +136,7 @@ export default function BecomeCompanionPage() {
 
             <div className="mt-8 grid gap-4">
               {[
-                { icon: Star, title: 'Set your own price', desc: 'You decide your hourly rate. We add a 15% platform fee on top.' },
+                { icon: Star, title: 'Set your own price', desc: `You decide your hourly rate. RentGF keeps a ${feePercent}% platform fee, you get the rest.` },
                 { icon: ShieldCheck, title: 'Safe and verified', desc: 'We verify every companion before their profile goes live.' },
                 { icon: Users, title: 'Real connections', desc: 'Meet interesting people for coffee, events, travel and more.' },
               ].map(({ icon: Icon, title, desc }) => (
@@ -153,7 +164,7 @@ export default function BecomeCompanionPage() {
               Start application <ChevronRight className="size-4" />
             </button>
             <p className="mt-4 text-center text-sm text-[#68756e]">
-              Already applied? <Link href="/dashboard" className="font-semibold text-[#c36d4d]">Go to dashboard</Link>
+              Already applied? <Link href="/companion" className="font-semibold text-[#c36d4d]">Go to your studio</Link>
             </p>
           </>
         )}
@@ -191,7 +202,14 @@ export default function BecomeCompanionPage() {
             </div>
             <button
               type="button"
-              onClick={() => { if (!city) { setError('Please select your city.'); return } setError(''); setStep('profile') }}
+              onClick={() => {
+                if (!city) { setError('Please select your city.'); return }
+                if (dob) {
+                  const age = (Date.now() - new Date(dob).getTime()) / (365.25 * 24 * 60 * 60 * 1000)
+                  if (age < 18) { setError('You must be 18 or older to become a companion.'); return }
+                }
+                setError(''); setStep('profile')
+              }}
               className="mt-6 flex w-full items-center justify-center gap-2 rounded-full bg-[#173f35] px-5 py-4 font-semibold text-white"
             >
               Next: Profile <ChevronRight className="size-4" />
@@ -210,7 +228,7 @@ export default function BecomeCompanionPage() {
                 <input value={photoUrl} onChange={(e) => setPhotoUrl(e.target.value)}
                   placeholder="https://..."
                   className="mt-2 w-full rounded-xl border border-[#e5e1da] px-3 py-3 outline-none focus:ring-2 focus:ring-[#bdd2c7]" />
-                <span className="mt-1 block text-xs text-[#8a968f]">You can add a photo later from your settings.</span>
+                <span className="mt-1 block text-xs text-[#8a968f]">You can add a photo later from your studio.</span>
               </label>
 
               <label className="text-sm font-medium">
@@ -262,9 +280,12 @@ export default function BecomeCompanionPage() {
 
               <label className="text-sm font-medium">
                 Hourly rate (₹)
-                <input type="number" min="500" step="100" value={price} onChange={(e) => setPrice(e.target.value)}
+                <input type="number" min={MIN_PRICE} step="100" value={price} onChange={(e) => setPrice(e.target.value)}
                   className="mt-2 w-full rounded-xl border border-[#e5e1da] px-3 py-3 outline-none focus:ring-2 focus:ring-[#bdd2c7]" />
-                <span className="mt-1 block text-xs text-[#8a968f]">Minimum ₹500/hr. Customers pay this plus a 15% platform fee.</span>
+                <span className="mt-1 block text-xs text-[#8a968f]">
+                  Minimum ₹{MIN_PRICE}/hr. Customers pay this price; you receive it minus the {feePercent}% platform fee
+                  {Number(price) > 0 ? ` (₹${(Number(price) - Math.round((Number(price) * feePercent) / 100)).toLocaleString('en-IN')} per hour)` : ''}.
+                </span>
               </label>
             </div>
 
