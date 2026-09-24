@@ -59,8 +59,8 @@ export default function BookingPage({ params }: { params: Promise<{ id: string }
       const supabase = createClient()
       const [{ data }, { data: fee }] = await Promise.all([
         supabase
-          .from('companion_profiles')
-          .select('id, bio, city, starting_price, categories, profiles!inner(display_name, profile_photo_url)')
+          .from('public_companion_profiles')
+          .select('id, bio, city, starting_price, categories, display_name, profile_photo_url')
           .eq('id', id)
           .single(),
         supabase.from('platform_settings').select('value').eq('key', 'booking_commission_percent').maybeSingle(),
@@ -68,15 +68,14 @@ export default function BookingPage({ params }: { params: Promise<{ id: string }
       const parsedFee = Number(fee?.value)
       if (Number.isFinite(parsedFee) && parsedFee >= 0 && parsedFee <= 100) setFeePercent(parsedFee)
       if (data) {
-        const profiles = data.profiles as unknown as { display_name: string | null; profile_photo_url: string | null }
         setCompanion({
           id: data.id,
           bio: data.bio,
           city: data.city,
           starting_price: data.starting_price,
           categories: data.categories,
-          display_name: profiles.display_name,
-          profile_photo_url: profiles.profile_photo_url,
+          display_name: data.display_name,
+          profile_photo_url: data.profile_photo_url,
         })
         setActivity(data.categories?.[0] ?? '')
       }
