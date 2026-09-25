@@ -25,18 +25,27 @@ const QUICK_FILTER_CITIES = [
   'Pune', 'Kolkata', 'Jaipur', 'Ahmedabad', 'Surat',
 ]
 
-// Full list of 50 cities for the dropdown filter
+// Full list of 70 cities for the dropdown filter
 const ALL_CITIES = [
-  'Agra', 'Ahmedabad', 'Amritsar', 'Aurangabad', 'Bengaluru',
-  'Bhopal', 'Bhubaneswar', 'Chandigarh', 'Chennai', 'Coimbatore',
-  'Dehradun', 'Delhi', 'Faridabad', 'Ghaziabad', 'Goa (Panaji)',
-  'Gurgaon', 'Guwahati', 'Gwalior', 'Hyderabad', 'Indore',
-  'Jaipur', 'Jalandhar', 'Jammu', 'Jodhpur', 'Kanpur',
-  'Kochi', 'Kolkata', 'Kozhikode', 'Lucknow', 'Ludhiana',
-  'Madurai', 'Mangalore', 'Mumbai', 'Mysuru', 'Nagpur',
-  'Nashik', 'Navi Mumbai', 'Noida', 'Patna', 'Prayagraj',
-  'Pune', 'Raipur', 'Rajkot', 'Ranchi', 'Surat',
-  'Thane', 'Thiruvananthapuram', 'Vadodara', 'Varanasi', 'Visakhapatnam',
+  'Agra', 'Ahmedabad', 'Amritsar', 'Anand', 'Aurangabad',
+  'Bengaluru', 'Bharuch', 'Bhavnagar', 'Bhopal', 'Bhubaneswar',
+  'Chandigarh', 'Chennai', 'Coimbatore', 'Cuttack',
+  'Dehradun', 'Delhi',
+  'Faridabad',
+  'Gandhinagar', 'Gandhidham', 'Ghaziabad', 'Goa (Panaji)', 'Gurgaon', 'Guwahati', 'Gwalior',
+  'Haridwar', 'Hubli', 'Hyderabad',
+  'Indore',
+  'Jaipur', 'Jalandhar', 'Jammu', 'Jamnagar', 'Jamshedpur', 'Jodhpur', 'Junagadh',
+  'Kanpur', 'Kochi', 'Kolkata', 'Kota', 'Kozhikode',
+  'Lucknow', 'Ludhiana',
+  'Madurai', 'Mangalore', 'Mumbai', 'Mysuru',
+  'Nadiad', 'Nagpur', 'Nashik', 'Navi Mumbai', 'Noida',
+  'Patna', 'Prayagraj', 'Pune',
+  'Raipur', 'Rajkot', 'Ranchi',
+  'Shimla', 'Shillong', 'Siliguri', 'Srinagar', 'Surat',
+  'Thane', 'Thiruvananthapuram', 'Tiruchirappalli',
+  'Udaipur',
+  'Vadodara', 'Varanasi', 'Vijayawada', 'Visakhapatnam',
 ]
 
 function BottomNav() {
@@ -150,7 +159,7 @@ export default function DiscoverPage() {
           </span>
         </div>
 
-        {/* Quick-filter city pills (desktop) */}
+        {/* Quick-filter city pills (top 10 metros) */}
         <div className="mt-3 hidden flex-wrap gap-2 sm:flex">
           {QUICK_FILTER_CITIES.map((c) => (
             <button key={c} type="button" onClick={() => setCity(city === c ? '' : c)} aria-label={`Companions in ${c}`}
@@ -173,7 +182,7 @@ export default function DiscoverPage() {
 
         {showFilters && (
           <div className="mt-3 grid grid-cols-2 gap-2">
-            {/* Full 50-city dropdown */}
+            {/* Full 70-city dropdown */}
             <select value={city} onChange={(e) => setCity(e.target.value)} aria-label="Filter by city" className="rounded-xl border border-[#e9e2d9] bg-white px-3 py-2.5 text-xs text-[#52645b] outline-none">
               <option value="">All cities</option>
               {ALL_CITIES.map((c) => <option key={c} value={c}>{c}</option>)}

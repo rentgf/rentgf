@@ -11,16 +11,25 @@ type Step = 'intro' | 'personal' | 'profile' | 'submitted'
 
 const CATEGORIES = ['Coffee & conversation', 'Dining', 'Movies & events', 'Travel companion', 'Shopping', 'Fitness & outdoors', 'Study buddy', 'Gaming']
 const CITIES = [
-  'Agra', 'Ahmedabad', 'Amritsar', 'Aurangabad', 'Bengaluru',
-  'Bhopal', 'Bhubaneswar', 'Chandigarh', 'Chennai', 'Coimbatore',
-  'Dehradun', 'Delhi', 'Faridabad', 'Ghaziabad', 'Goa (Panaji)',
-  'Gurgaon', 'Guwahati', 'Gwalior', 'Hyderabad', 'Indore',
-  'Jaipur', 'Jalandhar', 'Jammu', 'Jodhpur', 'Kanpur',
-  'Kochi', 'Kolkata', 'Kozhikode', 'Lucknow', 'Ludhiana',
-  'Madurai', 'Mangalore', 'Mumbai', 'Mysuru', 'Nagpur',
-  'Nashik', 'Navi Mumbai', 'Noida', 'Patna', 'Prayagraj',
-  'Pune', 'Raipur', 'Rajkot', 'Ranchi', 'Surat',
-  'Thane', 'Thiruvananthapuram', 'Vadodara', 'Varanasi', 'Visakhapatnam',
+  'Agra', 'Ahmedabad', 'Amritsar', 'Anand', 'Aurangabad',
+  'Bengaluru', 'Bharuch', 'Bhavnagar', 'Bhopal', 'Bhubaneswar',
+  'Chandigarh', 'Chennai', 'Coimbatore', 'Cuttack',
+  'Dehradun', 'Delhi',
+  'Faridabad',
+  'Gandhinagar', 'Gandhidham', 'Ghaziabad', 'Goa (Panaji)', 'Gurgaon', 'Guwahati', 'Gwalior',
+  'Haridwar', 'Hubli', 'Hyderabad',
+  'Indore',
+  'Jaipur', 'Jalandhar', 'Jammu', 'Jamnagar', 'Jamshedpur', 'Jodhpur', 'Junagadh',
+  'Kanpur', 'Kochi', 'Kolkata', 'Kota', 'Kozhikode',
+  'Lucknow', 'Ludhiana',
+  'Madurai', 'Mangalore', 'Mumbai', 'Mysuru',
+  'Nadiad', 'Nagpur', 'Nashik', 'Navi Mumbai', 'Noida',
+  'Patna', 'Prayagraj', 'Pune',
+  'Raipur', 'Rajkot', 'Ranchi',
+  'Shimla', 'Shillong', 'Siliguri', 'Srinagar', 'Surat',
+  'Thane', 'Thiruvananthapuram', 'Tiruchirappalli',
+  'Udaipur',
+  'Vadodara', 'Varanasi', 'Vijayawada', 'Visakhapatnam',
 ]
 const LANGUAGES = ['Hindi', 'English', 'Tamil', 'Telugu', 'Kannada', 'Bengali', 'Marathi', 'Gujarati']
 const MIN_PRICE = 500
