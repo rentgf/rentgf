@@ -10,7 +10,18 @@ import { Logo } from '@/components/logo'
 type Step = 'intro' | 'personal' | 'profile' | 'submitted'
 
 const CATEGORIES = ['Coffee & conversation', 'Dining', 'Movies & events', 'Travel companion', 'Shopping', 'Fitness & outdoors', 'Study buddy', 'Gaming']
-const CITIES = ['Delhi', 'Mumbai', 'Bengaluru', 'Hyderabad', 'Chennai', 'Kolkata', 'Pune', 'Jaipur', 'Ahmedabad', 'Surat']
+const CITIES = [
+  'Agra', 'Ahmedabad', 'Amritsar', 'Aurangabad', 'Bengaluru',
+  'Bhopal', 'Bhubaneswar', 'Chandigarh', 'Chennai', 'Coimbatore',
+  'Dehradun', 'Delhi', 'Faridabad', 'Ghaziabad', 'Goa (Panaji)',
+  'Gurgaon', 'Guwahati', 'Gwalior', 'Hyderabad', 'Indore',
+  'Jaipur', 'Jalandhar', 'Jammu', 'Jodhpur', 'Kanpur',
+  'Kochi', 'Kolkata', 'Kozhikode', 'Lucknow', 'Ludhiana',
+  'Madurai', 'Mangalore', 'Mumbai', 'Mysuru', 'Nagpur',
+  'Nashik', 'Navi Mumbai', 'Noida', 'Patna', 'Prayagraj',
+  'Pune', 'Raipur', 'Rajkot', 'Ranchi', 'Surat',
+  'Thane', 'Thiruvananthapuram', 'Vadodara', 'Varanasi', 'Visakhapatnam',
+]
 const LANGUAGES = ['Hindi', 'English', 'Tamil', 'Telugu', 'Kannada', 'Bengali', 'Marathi', 'Gujarati']
 const MIN_PRICE = 500
 

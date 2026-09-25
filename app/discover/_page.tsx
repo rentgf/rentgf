@@ -19,6 +19,26 @@ type CompanionCard = {
   profile_photo_url: string | null
 }
 
+// Top cities shown as quick-filter pills (popular metros first)
+const QUICK_FILTER_CITIES = [
+  'Delhi', 'Mumbai', 'Bengaluru', 'Hyderabad', 'Chennai',
+  'Pune', 'Kolkata', 'Jaipur', 'Ahmedabad', 'Surat',
+]
+
+// Full list of 50 cities for the dropdown filter
+const ALL_CITIES = [
+  'Agra', 'Ahmedabad', 'Amritsar', 'Aurangabad', 'Bengaluru',
+  'Bhopal', 'Bhubaneswar', 'Chandigarh', 'Chennai', 'Coimbatore',
+  'Dehradun', 'Delhi', 'Faridabad', 'Ghaziabad', 'Goa (Panaji)',
+  'Gurgaon', 'Guwahati', 'Gwalior', 'Hyderabad', 'Indore',
+  'Jaipur', 'Jalandhar', 'Jammu', 'Jodhpur', 'Kanpur',
+  'Kochi', 'Kolkata', 'Kozhikode', 'Lucknow', 'Ludhiana',
+  'Madurai', 'Mangalore', 'Mumbai', 'Mysuru', 'Nagpur',
+  'Nashik', 'Navi Mumbai', 'Noida', 'Patna', 'Prayagraj',
+  'Pune', 'Raipur', 'Rajkot', 'Ranchi', 'Surat',
+  'Thane', 'Thiruvananthapuram', 'Vadodara', 'Varanasi', 'Visakhapatnam',
+]
+
 function BottomNav() {
   return (
     <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-[#e9e2d9] bg-white/95 px-4 pb-[max(10px,env(safe-area-inset-bottom))] pt-2 shadow-[0_-8px_24px_rgba(23,63,53,.06)] backdrop-blur md:hidden">
@@ -49,7 +69,6 @@ export default function DiscoverPage() {
   const [price, setPrice] = useState('')
   const [savedIds, setSavedIds] = useState<Set<string>>(new Set())
   const [userId, setUserId] = useState<string | null>(null)
-  const [cities, setCities] = useState<string[]>([])
   const [allCategories, setAllCategories] = useState<string[]>([])
   const [showFilters, setShowFilters] = useState(false)
 
@@ -80,7 +99,6 @@ export default function DiscoverPage() {
         return { id: row.id as string, bio: row.bio, city: row.city, starting_price: row.starting_price, avg_rating: row.avg_rating, review_count: row.total_reviews, categories: row.categories, languages: row.languages, display_name: row.display_name, profile_photo_url: row.profile_photo_url }
       })
       setCompanions(mapped)
-      setCities([...new Set(mapped.map((c) => c.city).filter(Boolean))] as string[])
       setAllCategories([...new Set(mapped.flatMap((c) => c.categories ?? []))] as string[])
     }
     setLoading(false)
@@ -132,8 +150,9 @@ export default function DiscoverPage() {
           </span>
         </div>
 
+        {/* Quick-filter city pills (desktop) */}
         <div className="mt-3 hidden flex-wrap gap-2 sm:flex">
-          {['Delhi', 'Mumbai', 'Bengaluru', 'Hyderabad', 'Chennai', 'Pune', 'Kolkata', 'Jaipur'].map((c) => (
+          {QUICK_FILTER_CITIES.map((c) => (
             <button key={c} type="button" onClick={() => setCity(city === c ? '' : c)} aria-label={`Companions in ${c}`}
               className={`rounded-full px-3 py-1 text-xs ${ city === c ? 'bg-[#173f35] font-semibold text-white' : 'bg-[#f0ece6] text-[#68756e]' }`}>{c}</button>
           ))}
@@ -154,9 +173,10 @@ export default function DiscoverPage() {
 
         {showFilters && (
           <div className="mt-3 grid grid-cols-2 gap-2">
+            {/* Full 50-city dropdown */}
             <select value={city} onChange={(e) => setCity(e.target.value)} aria-label="Filter by city" className="rounded-xl border border-[#e9e2d9] bg-white px-3 py-2.5 text-xs text-[#52645b] outline-none">
               <option value="">All cities</option>
-              {cities.map((c) => <option key={c} value={c}>{c}</option>)}
+              {ALL_CITIES.map((c) => <option key={c} value={c}>{c}</option>)}
             </select>
             <select value={price} onChange={(e) => setPrice(e.target.value)} aria-label="Filter by price" className="rounded-xl border border-[#e9e2d9] bg-white px-3 py-2.5 text-xs text-[#52645b] outline-none">
               {PRICE_OPTIONS.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
