@@ -284,10 +284,6 @@ export default function RegisterPage() {
             Already have an account?{' '}
             <Link href="/login" className="font-semibold text-[#c36d4d]">Log in</Link>
           </p>
-          <p className="mt-3 text-sm text-[#68756e]">
-            Want to earn on RentGF?{' '}
-            <Link href="/earn-as-companion" className="font-semibold text-[#c36d4d]">Register as a companion</Link>
-          </p>
         </div>
         <div className="mt-6 flex justify-center gap-5 text-xs text-[#9aa49d]">
           <Link href="/terms" className="hover:text-[#173f35]">Terms of Service</Link>
