@@ -2,8 +2,8 @@
 
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useEffect, useState } from 'react'
-import { CheckCircle2, ChevronRight, ShieldCheck, Star, Users } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { Camera, CheckCircle2, ChevronRight, ShieldCheck, Star, Users, X } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { Logo } from '@/components/logo'
 
@@ -73,6 +73,9 @@ export default function BecomeCompanionPage() {
   const [selectedCategories, setSelectedCategories] = useState<string[]>([])
   const [selectedLanguages, setSelectedLanguages] = useState<string[]>([])
   const [photoUrl, setPhotoUrl] = useState('')
+  const [photoPreview, setPhotoPreview] = useState('')
+  const [photoUploading, setPhotoUploading] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     createClient().from('platform_settings').select('value').eq('key', 'booking_commission_percent').maybeSingle()
@@ -84,6 +87,49 @@ export default function BecomeCompanionPage() {
 
   function toggleItem(list: string[], setList: (v: string[]) => void, item: string) {
     setList(list.includes(item) ? list.filter((i) => i !== item) : [...list, item])
+  }
+
+  async function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    // Preview
+    const objectUrl = URL.createObjectURL(file)
+    setPhotoPreview(objectUrl)
+    setPhotoUploading(true)
+
+    try {
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      const ext = file.name.split('.').pop() ?? 'jpg'
+      const path = user ? `${user.id}/profile.${ext}` : `temp/${Date.now()}.${ext}`
+
+      const { error: uploadError } = await supabase.storage
+        .from('profile-photos')
+        .upload(path, file, { upsert: true })
+
+      if (uploadError) {
+        setError('Photo upload failed: ' + uploadError.message)
+        setPhotoUploading(false)
+        return
+      }
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('profile-photos')
+        .getPublicUrl(path)
+
+      setPhotoUrl(publicUrl)
+    } catch {
+      setError('Photo upload failed. Please try again.')
+    } finally {
+      setPhotoUploading(false)
+    }
+  }
+
+  function removePhoto() {
+    setPhotoUrl('')
+    setPhotoPreview('')
+    if (fileInputRef.current) fileInputRef.current.value = ''
   }
 
   async function submit() {
@@ -250,19 +296,51 @@ export default function BecomeCompanionPage() {
             <h2 className="text-2xl font-semibold text-[#173f35]">Your profile</h2>
             <p className="mt-2 text-sm text-[#68756e]">This is what customers will see.</p>
             <div className="mt-6 flex flex-col gap-5">
-              <label className="text-sm font-medium">
-                Profile photo URL <span className="font-normal text-[#8a968f]">(optional for now)</span>
-                <input value={photoUrl} onChange={(e) => setPhotoUrl(e.target.value)}
-                  placeholder="https://..."
-                  className="mt-2 w-full rounded-xl border border-[#e5e1da] px-3 py-3 outline-none focus:ring-2 focus:ring-[#bdd2c7]" />
-                <span className="mt-1 block text-xs text-[#8a968f]">You can add a photo later from your studio.</span>
-              </label>
+
+              {/* Photo upload */}
+              <div>
+                <p className="text-sm font-medium">Profile photo <span className="font-normal text-[#8a968f]">(optional)</span></p>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handlePhotoChange}
+                />
+                {photoPreview ? (
+                  <div className="mt-3 relative w-28">
+                    <img src={photoPreview} alt="Preview" className="size-28 rounded-2xl object-cover border border-[#e5e1da]" />
+                    {photoUploading && (
+                      <div className="absolute inset-0 flex items-center justify-center rounded-2xl bg-black/40">
+                        <span className="text-xs font-semibold text-white">Uploading…</span>
+                      </div>
+                    )}
+                    {!photoUploading && (
+                      <button type="button" onClick={removePhoto}
+                        className="absolute -right-2 -top-2 flex size-6 items-center justify-center rounded-full bg-white shadow border border-[#e5e1da]">
+                        <X className="size-3.5 text-[#52645b]" />
+                      </button>
+                    )}
+                  </div>
+                ) : (
+                  <button type="button" onClick={() => fileInputRef.current?.click()}
+                    className="mt-3 flex items-center gap-3 rounded-2xl border-2 border-dashed border-[#c8d9c4] bg-[#f4faf4] px-5 py-5 text-sm text-[#4e8068] hover:bg-[#edf4ed] transition-colors">
+                    <Camera className="size-5 shrink-0" />
+                    <span>Tap to upload a photo</span>
+                  </button>
+                )}
+                {photoUrl && !photoUploading && (
+                  <p className="mt-1.5 text-xs text-[#4e8068]">Photo uploaded successfully</p>
+                )}
+              </div>
+
               <label className="text-sm font-medium">
                 Bio <span className="text-red-500">*</span>
                 <textarea required value={bio} onChange={(e) => setBio(e.target.value)}
                   placeholder="Tell customers about yourself, your personality, and what kind of activities you enjoy..."
                   className="mt-2 min-h-28 w-full resize-none rounded-xl border border-[#e5e1da] px-3 py-3 outline-none focus:ring-2 focus:ring-[#bdd2c7]" />
               </label>
+
               <div>
                 <p className="text-sm font-medium">Activities you offer <span className="text-red-500">*</span></p>
                 <div className="mt-3 flex flex-wrap gap-2">
@@ -274,6 +352,7 @@ export default function BecomeCompanionPage() {
                   ))}
                 </div>
               </div>
+
               <div>
                 <p className="text-sm font-medium">Languages you speak</p>
                 <div className="mt-3 flex flex-wrap gap-2">
@@ -285,6 +364,7 @@ export default function BecomeCompanionPage() {
                   ))}
                 </div>
               </div>
+
               <label className="text-sm font-medium">
                 Hourly rate (₹)
                 <input type="number" min={MIN_PRICE} step="100" value={price} onChange={(e) => setPrice(e.target.value)}
@@ -295,8 +375,9 @@ export default function BecomeCompanionPage() {
                 </span>
               </label>
             </div>
+
             {error && <p className="mt-4 rounded-xl bg-[#fff3ed] px-4 py-3 text-sm text-[#a04f39]">{error}</p>}
-            <button type="button" disabled={submitting} onClick={submit}
+            <button type="button" disabled={submitting || photoUploading} onClick={submit}
               className="mt-6 flex w-full items-center justify-center gap-2 rounded-full bg-[#173f35] px-5 py-4 font-semibold text-white disabled:opacity-60">
               {submitting ? 'Submitting…' : 'Submit application'}
             </button>
