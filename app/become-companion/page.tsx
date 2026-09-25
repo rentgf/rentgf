@@ -10,27 +10,47 @@ import { Logo } from '@/components/logo'
 type Step = 'intro' | 'personal' | 'profile' | 'submitted'
 
 const CATEGORIES = ['Coffee & conversation', 'Dining', 'Movies & events', 'Travel companion', 'Shopping', 'Fitness & outdoors', 'Study buddy', 'Gaming']
+
+// 18 major states — ~10-12 cities each, alphabetically sorted
 const CITIES = [
-  'Agra', 'Ahmedabad', 'Amritsar', 'Anand', 'Aurangabad',
-  'Bengaluru', 'Bharuch', 'Bhavnagar', 'Bhopal', 'Bhubaneswar',
-  'Chandigarh', 'Chennai', 'Coimbatore', 'Cuttack',
-  'Dehradun', 'Delhi',
-  'Faridabad',
-  'Gandhinagar', 'Gandhidham', 'Ghaziabad', 'Goa (Panaji)', 'Gurgaon', 'Guwahati', 'Gwalior',
-  'Haridwar', 'Hubli', 'Hyderabad',
-  'Indore',
-  'Jaipur', 'Jalandhar', 'Jammu', 'Jamnagar', 'Jamshedpur', 'Jodhpur', 'Junagadh',
-  'Kanpur', 'Kochi', 'Kolkata', 'Kota', 'Kozhikode',
-  'Lucknow', 'Ludhiana',
-  'Madurai', 'Mangalore', 'Mumbai', 'Mysuru',
-  'Nadiad', 'Nagpur', 'Nashik', 'Navi Mumbai', 'Noida',
-  'Patna', 'Prayagraj', 'Pune',
-  'Raipur', 'Rajkot', 'Ranchi',
-  'Shimla', 'Shillong', 'Siliguri', 'Srinagar', 'Surat',
-  'Thane', 'Thiruvananthapuram', 'Tiruchirappalli',
-  'Udaipur',
-  'Vadodara', 'Varanasi', 'Vijayawada', 'Visakhapatnam',
+  // Andhra Pradesh
+  'Guntur', 'Kakinada', 'Kurnool', 'Nellore', 'Rajahmundry', 'Tirupati', 'Vijayawada', 'Visakhapatnam',
+  // Assam
+  'Dibrugarh', 'Guwahati', 'Jorhat', 'Nagaon', 'Silchar', 'Tinsukia',
+  // Bihar
+  'Bhagalpur', 'Darbhanga', 'Gaya', 'Muzaffarpur', 'Patna', 'Purnia',
+  // Gujarat
+  'Ahmedabad', 'Anand', 'Bharuch', 'Bhavnagar', 'Gandhinagar', 'Gandhidham', 'Jamnagar', 'Junagadh', 'Nadiad', 'Rajkot', 'Surat', 'Vadodara',
+  // Haryana
+  'Ambala', 'Faridabad', 'Gurgaon', 'Hisar', 'Karnal', 'Panipat', 'Rohtak', 'Sonipat',
+  // Jharkhand
+  'Bokaro', 'Deoghar', 'Dhanbad', 'Hazaribagh', 'Jamshedpur', 'Ranchi',
+  // Karnataka
+  'Belagavi', 'Bengaluru', 'Davangere', 'Gulbarga', 'Hubli', 'Mangalore', 'Mysuru', 'Shimoga', 'Tumkur', 'Udupi',
+  // Kerala
+  'Alappuzha', 'Kannur', 'Kochi', 'Kollam', 'Kottayam', 'Kozhikode', 'Palakkad', 'Thiruvananthapuram', 'Thrissur',
+  // Madhya Pradesh
+  'Bhopal', 'Dewas', 'Gwalior', 'Indore', 'Jabalpur', 'Ratlam', 'Rewa', 'Sagar', 'Satna', 'Ujjain',
+  // Maharashtra
+  'Amravati', 'Aurangabad', 'Kolhapur', 'Mumbai', 'Nagpur', 'Nashik', 'Navi Mumbai', 'Pune', 'Solapur', 'Thane',
+  // Odisha
+  'Berhampur', 'Bhubaneswar', 'Cuttack', 'Puri', 'Rourkela', 'Sambalpur',
+  // Punjab
+  'Amritsar', 'Bathinda', 'Jalandhar', 'Ludhiana', 'Mohali', 'Pathankot', 'Patiala',
+  // Rajasthan
+  'Ajmer', 'Alwar', 'Bharatpur', 'Bhilwara', 'Bikaner', 'Jaipur', 'Jodhpur', 'Kota', 'Sikar', 'Udaipur',
+  // Tamil Nadu
+  'Chennai', 'Coimbatore', 'Dindigul', 'Erode', 'Kanchipuram', 'Madurai', 'Salem', 'Thoothukudi', 'Tiruchirappalli', 'Tirunelveli', 'Tiruppur', 'Vellore',
+  // Telangana
+  'Hyderabad', 'Karimnagar', 'Khammam', 'Mahbubnagar', 'Nalgonda', 'Nizamabad', 'Ramagundam', 'Warangal',
+  // Uttar Pradesh
+  'Agra', 'Aligarh', 'Bareilly', 'Ghaziabad', 'Gorakhpur', 'Kanpur', 'Lucknow', 'Meerut', 'Moradabad', 'Noida', 'Prayagraj', 'Varanasi',
+  // West Bengal
+  'Asansol', 'Bardhaman', 'Darjeeling', 'Durgapur', 'Howrah', 'Kolkata', 'Malda', 'Siliguri',
+  // Delhi NCT
+  'Delhi',
 ]
+
 const LANGUAGES = ['Hindi', 'English', 'Tamil', 'Telugu', 'Kannada', 'Bengali', 'Marathi', 'Gujarati']
 const MIN_PRICE = 500
 
@@ -55,7 +75,6 @@ export default function BecomeCompanionPage() {
   const [photoUrl, setPhotoUrl] = useState('')
 
   useEffect(() => {
-    // Show the admin-configured platform fee.
     createClient().from('platform_settings').select('value').eq('key', 'booking_commission_percent').maybeSingle()
       .then(({ data }) => {
         const n = Number(data?.value)
@@ -91,7 +110,6 @@ export default function BecomeCompanionPage() {
     }).eq('id', user.id)
     if (profileError) { setError(profileError.message); setSubmitting(false); return }
 
-    // Review state is forced to pending/hidden by a database trigger.
     const { error: cpError } = await supabase.from('companion_profiles').upsert({
       profile_id: user.id,
       bio,
@@ -153,7 +171,6 @@ export default function BecomeCompanionPage() {
             <p className="text-xs font-semibold uppercase tracking-[.18em] text-[#d17b58]">Earn on your terms</p>
             <h1 className="mt-2 text-4xl font-semibold tracking-[-.04em] text-[#173f35]">Become a companion</h1>
             <p className="mt-3 text-[#68756e]">Share your time and earn by spending it with interesting people. All activities are lawful and non-sexual.</p>
-
             <div className="mt-8 grid gap-4">
               {[
                 { icon: Star, title: 'Set your own price', desc: `You decide your hourly rate. RentGF keeps a ${feePercent}% platform fee, you get the rest.` },
@@ -171,16 +188,10 @@ export default function BecomeCompanionPage() {
                 </div>
               ))}
             </div>
-
             <div className="mt-8 rounded-2xl bg-[#fff8ed] p-5 text-sm leading-6 text-[#745b35]">
               <strong>18+ only.</strong> By applying you confirm you are at least 18 years old and agree to our non-sexual companionship policy and Terms of Service.
             </div>
-
-            <button
-              type="button"
-              onClick={() => setStep('personal')}
-              className="mt-6 flex w-full items-center justify-center gap-2 rounded-full bg-[#173f35] px-5 py-4 font-semibold text-white"
-            >
+            <button type="button" onClick={() => setStep('personal')} className="mt-6 flex w-full items-center justify-center gap-2 rounded-full bg-[#173f35] px-5 py-4 font-semibold text-white">
               Start application <ChevronRight className="size-4" />
             </button>
             <p className="mt-4 text-center text-sm text-[#68756e]">
@@ -210,7 +221,7 @@ export default function BecomeCompanionPage() {
                 <select required value={city} onChange={(e) => setCity(e.target.value)}
                   className="mt-2 w-full rounded-xl border border-[#e5e1da] px-3 py-3 outline-none focus:ring-2 focus:ring-[#bdd2c7]">
                   <option value="">Select your city</option>
-                  {CITIES.map((c) => <option key={c}>{c}</option>)}
+                  {[...CITIES].sort().map((c) => <option key={c}>{c}</option>)}
                 </select>
               </label>
               <label className="text-sm font-medium">
@@ -220,18 +231,14 @@ export default function BecomeCompanionPage() {
                   className="mt-2 w-full rounded-xl border border-[#e5e1da] px-3 py-3 outline-none focus:ring-2 focus:ring-[#bdd2c7]" />
               </label>
             </div>
-            <button
-              type="button"
-              onClick={() => {
-                if (!city) { setError('Please select your city.'); return }
-                if (dob) {
-                  const age = (Date.now() - new Date(dob).getTime()) / (365.25 * 24 * 60 * 60 * 1000)
-                  if (age < 18) { setError('You must be 18 or older to become a companion.'); return }
-                }
-                setError(''); setStep('profile')
-              }}
-              className="mt-6 flex w-full items-center justify-center gap-2 rounded-full bg-[#173f35] px-5 py-4 font-semibold text-white"
-            >
+            <button type="button" onClick={() => {
+              if (!city) { setError('Please select your city.'); return }
+              if (dob) {
+                const age = (Date.now() - new Date(dob).getTime()) / (365.25 * 24 * 60 * 60 * 1000)
+                if (age < 18) { setError('You must be 18 or older to become a companion.'); return }
+              }
+              setError(''); setStep('profile')
+            }} className="mt-6 flex w-full items-center justify-center gap-2 rounded-full bg-[#173f35] px-5 py-4 font-semibold text-white">
               Next: Profile <ChevronRight className="size-4" />
             </button>
             {error && <p className="mt-3 rounded-xl bg-[#fff3ed] px-4 py-3 text-sm text-[#a04f39]">{error}</p>}
@@ -250,54 +257,34 @@ export default function BecomeCompanionPage() {
                   className="mt-2 w-full rounded-xl border border-[#e5e1da] px-3 py-3 outline-none focus:ring-2 focus:ring-[#bdd2c7]" />
                 <span className="mt-1 block text-xs text-[#8a968f]">You can add a photo later from your studio.</span>
               </label>
-
               <label className="text-sm font-medium">
                 Bio <span className="text-red-500">*</span>
                 <textarea required value={bio} onChange={(e) => setBio(e.target.value)}
                   placeholder="Tell customers about yourself, your personality, and what kind of activities you enjoy..."
                   className="mt-2 min-h-28 w-full resize-none rounded-xl border border-[#e5e1da] px-3 py-3 outline-none focus:ring-2 focus:ring-[#bdd2c7]" />
               </label>
-
               <div>
                 <p className="text-sm font-medium">Activities you offer <span className="text-red-500">*</span></p>
                 <div className="mt-3 flex flex-wrap gap-2">
                   {CATEGORIES.map((cat) => (
-                    <button
-                      key={cat}
-                      type="button"
-                      onClick={() => toggleItem(selectedCategories, setSelectedCategories, cat)}
-                      className={`rounded-full px-3.5 py-2 text-xs font-semibold ${
-                        selectedCategories.includes(cat)
-                          ? 'bg-[#173f35] text-white'
-                          : 'bg-white border border-[#e5e1da] text-[#52645b]'
-                      }`}
-                    >
+                    <button key={cat} type="button" onClick={() => toggleItem(selectedCategories, setSelectedCategories, cat)}
+                      className={`rounded-full px-3.5 py-2 text-xs font-semibold ${ selectedCategories.includes(cat) ? 'bg-[#173f35] text-white' : 'bg-white border border-[#e5e1da] text-[#52645b]' }`}>
                       {cat}
                     </button>
                   ))}
                 </div>
               </div>
-
               <div>
                 <p className="text-sm font-medium">Languages you speak</p>
                 <div className="mt-3 flex flex-wrap gap-2">
                   {LANGUAGES.map((lang) => (
-                    <button
-                      key={lang}
-                      type="button"
-                      onClick={() => toggleItem(selectedLanguages, setSelectedLanguages, lang)}
-                      className={`rounded-full px-3.5 py-2 text-xs font-semibold ${
-                        selectedLanguages.includes(lang)
-                          ? 'bg-[#4e8068] text-white'
-                          : 'bg-white border border-[#e5e1da] text-[#52645b]'
-                      }`}
-                    >
+                    <button key={lang} type="button" onClick={() => toggleItem(selectedLanguages, setSelectedLanguages, lang)}
+                      className={`rounded-full px-3.5 py-2 text-xs font-semibold ${ selectedLanguages.includes(lang) ? 'bg-[#4e8068] text-white' : 'bg-white border border-[#e5e1da] text-[#52645b]' }`}>
                       {lang}
                     </button>
                   ))}
                 </div>
               </div>
-
               <label className="text-sm font-medium">
                 Hourly rate (₹)
                 <input type="number" min={MIN_PRICE} step="100" value={price} onChange={(e) => setPrice(e.target.value)}
@@ -308,14 +295,9 @@ export default function BecomeCompanionPage() {
                 </span>
               </label>
             </div>
-
             {error && <p className="mt-4 rounded-xl bg-[#fff3ed] px-4 py-3 text-sm text-[#a04f39]">{error}</p>}
-            <button
-              type="button"
-              disabled={submitting}
-              onClick={submit}
-              className="mt-6 flex w-full items-center justify-center gap-2 rounded-full bg-[#173f35] px-5 py-4 font-semibold text-white disabled:opacity-60"
-            >
+            <button type="button" disabled={submitting} onClick={submit}
+              className="mt-6 flex w-full items-center justify-center gap-2 rounded-full bg-[#173f35] px-5 py-4 font-semibold text-white disabled:opacity-60">
               {submitting ? 'Submitting…' : 'Submit application'}
             </button>
             <button type="button" onClick={() => setStep('personal')} className="mt-3 w-full text-center text-sm text-[#68756e]">

@@ -19,33 +19,35 @@ type CompanionCard = {
   profile_photo_url: string | null
 }
 
-// Top cities shown as quick-filter pills (popular metros first)
+// Top 10 metros as quick-filter pills
 const QUICK_FILTER_CITIES = [
   'Delhi', 'Mumbai', 'Bengaluru', 'Hyderabad', 'Chennai',
   'Pune', 'Kolkata', 'Jaipur', 'Ahmedabad', 'Surat',
 ]
 
-// Full list of 70 cities for the dropdown filter
+// 18 major states — ~10-12 cities each (alphabetically sorted)
 const ALL_CITIES = [
-  'Agra', 'Ahmedabad', 'Amritsar', 'Anand', 'Aurangabad',
-  'Bengaluru', 'Bharuch', 'Bhavnagar', 'Bhopal', 'Bhubaneswar',
-  'Chandigarh', 'Chennai', 'Coimbatore', 'Cuttack',
-  'Dehradun', 'Delhi',
+  'Agra', 'Ahmedabad', 'Ajmer', 'Aligarh', 'Alwar', 'Amravati', 'Amritsar', 'Anand', 'Asansol', 'Aurangabad',
+  'Bareilly', 'Bardhaman', 'Bathinda', 'Belagavi', 'Bengaluru', 'Berhampur', 'Bharatpur', 'Bharuch', 'Bhavnagar', 'Bhilwara', 'Bhopal', 'Bhubaneswar', 'Bikaner', 'Bokaro',
+  'Chennai', 'Coimbatore', 'Cuttack',
+  'Darjeeling', 'Davangere', 'Delhi', 'Deoghar', 'Dewas', 'Dhanbad', 'Dindigul', 'Dibrugarh', 'Durgapur',
+  'Erode',
   'Faridabad',
-  'Gandhinagar', 'Gandhidham', 'Ghaziabad', 'Goa (Panaji)', 'Gurgaon', 'Guwahati', 'Gwalior',
-  'Haridwar', 'Hubli', 'Hyderabad',
+  'Gandhinagar', 'Gandhidham', 'Gaya', 'Ghaziabad', 'Gorakhpur', 'Gulbarga', 'Guntur', 'Gurgaon', 'Guwahati', 'Gwalior',
+  'Hazaribagh', 'Hisar', 'Howrah', 'Hubli', 'Hyderabad',
   'Indore',
-  'Jaipur', 'Jalandhar', 'Jammu', 'Jamnagar', 'Jamshedpur', 'Jodhpur', 'Junagadh',
-  'Kanpur', 'Kochi', 'Kolkata', 'Kota', 'Kozhikode',
+  'Jabalpur', 'Jaipur', 'Jalandhar', 'Jamnagar', 'Jamshedpur', 'Jodhpur', 'Jorhat', 'Junagadh',
+  'Kakinada', 'Kanchipuram', 'Kanpur', 'Karimnagar', 'Karnal', 'Khammam', 'Kochi', 'Kolkata', 'Kollam', 'Kota', 'Kottayam', 'Kozhikode', 'Kurnool',
   'Lucknow', 'Ludhiana',
-  'Madurai', 'Mangalore', 'Mumbai', 'Mysuru',
-  'Nadiad', 'Nagpur', 'Nashik', 'Navi Mumbai', 'Noida',
-  'Patna', 'Prayagraj', 'Pune',
-  'Raipur', 'Rajkot', 'Ranchi',
-  'Shimla', 'Shillong', 'Siliguri', 'Srinagar', 'Surat',
-  'Thane', 'Thiruvananthapuram', 'Tiruchirappalli',
-  'Udaipur',
-  'Vadodara', 'Varanasi', 'Vijayawada', 'Visakhapatnam',
+  'Madurai', 'Mahbubnagar', 'Malda', 'Mangalore', 'Meerut', 'Mohali', 'Moradabad', 'Mumbai', 'Muzaffarpur', 'Mysuru',
+  'Nadiad', 'Nagaon', 'Nagpur', 'Nashik', 'Navi Mumbai', 'Nellore', 'Nizamabad', 'Noida',
+  'Palakkad', 'Panipat', 'Pathankot', 'Patna', 'Patiala', 'Prayagraj', 'Pune', 'Puri', 'Purnia',
+  'Rajahmundry', 'Rajkot', 'Ramagundam', 'Ranchi', 'Ratlam', 'Rewa', 'Rohtak', 'Rourkela',
+  'Sagar', 'Salem', 'Sambalpur', 'Satna', 'Sikar', 'Silchar', 'Siliguri', 'Solapur', 'Sonipat', 'Surat',
+  'Thane', 'Thiruvananthapuram', 'Thoothukudi', 'Tinsukia', 'Tiruchirappalli', 'Tirunelveli', 'Tirupati', 'Tiruppur', 'Thrissur', 'Tumkur',
+  'Udaipur', 'Udupi', 'Ujjain',
+  'Vadodara', 'Varanasi', 'Vellore', 'Vijayawada', 'Visakhapatnam',
+  'Warangal',
 ]
 
 function BottomNav() {
@@ -159,7 +161,7 @@ export default function DiscoverPage() {
           </span>
         </div>
 
-        {/* Quick-filter city pills (top 10 metros) */}
+        {/* Quick-filter city pills — top 10 metros */}
         <div className="mt-3 hidden flex-wrap gap-2 sm:flex">
           {QUICK_FILTER_CITIES.map((c) => (
             <button key={c} type="button" onClick={() => setCity(city === c ? '' : c)} aria-label={`Companions in ${c}`}
@@ -182,7 +184,6 @@ export default function DiscoverPage() {
 
         {showFilters && (
           <div className="mt-3 grid grid-cols-2 gap-2">
-            {/* Full 70-city dropdown */}
             <select value={city} onChange={(e) => setCity(e.target.value)} aria-label="Filter by city" className="rounded-xl border border-[#e9e2d9] bg-white px-3 py-2.5 text-xs text-[#52645b] outline-none">
               <option value="">All cities</option>
               {ALL_CITIES.map((c) => <option key={c} value={c}>{c}</option>)}
