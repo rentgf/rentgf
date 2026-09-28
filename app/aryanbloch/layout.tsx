@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { BarChart2, Bot, BookOpen, LogOut, Mail, MessageSquare, Settings, Users } from 'lucide-react'
+import { BarChart2, Bot, BookOpen, Inbox, LogOut, Mail, MessageSquare, Settings, Users } from 'lucide-react'
 import { Logo } from '@/components/logo'
 
 const NAV = [
@@ -10,6 +10,7 @@ const NAV = [
   { href: '/aryanbloch/companions', label: 'Companions', icon: Users },
   { href: '/aryanbloch/bookings', label: 'Bookings', icon: BookOpen },
   { href: '/aryanbloch/reports', label: 'Reports', icon: MessageSquare },
+  { href: '/aryanbloch/messages', label: 'Messages', icon: Inbox },
   { href: '/aryanbloch/emails', label: 'Emails', icon: Mail },
   { href: '/aryanbloch/bot', label: 'Automated bot', icon: Bot },
   { href: '/aryanbloch/settings', label: 'Settings', icon: Settings },
