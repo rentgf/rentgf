@@ -2,8 +2,10 @@
 
 import Link from 'next/link'
 import { useState } from 'react'
-import { CheckCircle2, Mail, MessageCircle, ShieldCheck } from 'lucide-react'
+import { CheckCircle2, MessageCircle } from 'lucide-react'
 import { Logo } from '@/components/logo'
+
+const SUPPORT_EMAIL = 'support@rentgf.site'
 
 export default function ContactPage() {
   const [name, setName] = useState('')
@@ -24,18 +26,12 @@ export default function ContactPage() {
       <h1 className="mt-10 text-4xl font-semibold tracking-[-0.04em] text-[#173f35]">Contact us</h1>
       <p className="mt-3 text-sm leading-6 text-[#68756e]">Have a question, concern, or feedback? We are here to help.</p>
 
-      <div className="mt-10 grid gap-4 sm:grid-cols-3">
-        {[
-          { icon: Mail, label: 'General', email: 'hello@rentgf.com' },
-          { icon: ShieldCheck, label: 'Safety', email: 'safety@rentgf.com' },
-          { icon: MessageCircle, label: 'Support', email: 'support@rentgf.com' },
-        ].map(({ icon: Icon, label, email }) => (
-          <a key={email} href={`mailto:${email}`} className="flex flex-col items-center gap-2 rounded-2xl border border-[#e9e2d9] bg-white p-5 text-center hover:bg-[#f5f8f3]">
-            <Icon className="size-5 text-[#4e8068]" />
-            <span className="text-sm font-semibold">{label}</span>
-            <span className="text-xs text-[#68756e]">{email}</span>
-          </a>
-        ))}
+      <div className="mt-10">
+        <a href={`mailto:${SUPPORT_EMAIL}`} className="flex flex-col items-center gap-2 rounded-2xl border border-[#e9e2d9] bg-white p-5 text-center hover:bg-[#f5f8f3]">
+          <MessageCircle className="size-5 text-[#4e8068]" />
+          <span className="text-sm font-semibold">Support</span>
+          <span className="text-xs text-[#68756e]">{SUPPORT_EMAIL}</span>
+        </a>
       </div>
 
       <div className="mt-10 rounded-[24px] border border-[#e9e2d9] bg-white p-6">
