@@ -19,11 +19,26 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Email service is not configured. Please contact support.' }, { status: 500 })
     }
 
+    const supabase = createAdminSupabaseClient()
+
+    // Check if email already exists in profiles before sending OTP
+    const { data: existingProfile } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('email', email.trim().toLowerCase())
+      .maybeSingle()
+
+    if (existingProfile) {
+      return NextResponse.json(
+        { error: 'An account with this email already exists. Please log in instead.' },
+        { status: 409 }
+      )
+    }
+
     const otp = generateOtp()
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString() // 10 min
 
     // issue_email_otp validates input and enforces a 60s resend cooldown.
-    const supabase = createAdminSupabaseClient()
     const { data: issued, error } = await supabase.rpc('issue_email_otp', {
       p_email: email.trim().toLowerCase(),
       p_otp: otp,
