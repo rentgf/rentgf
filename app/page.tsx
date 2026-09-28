@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { Bell, Bookmark, CalendarDays, Compass, Heart, Home, MessageCircle, Search, ShieldCheck, Sparkles, Star, UserRound } from 'lucide-react'
 import { categories } from '@/lib/domain/rentgf'
 import { createClient } from '@/lib/supabase/client'
+import { spreadBySamePhoto } from '@/lib/spread-companions'
 import { Footer } from '@/components/footer'
 import { Logo } from '@/components/logo'
 
@@ -185,10 +186,13 @@ export default function Page() {
 
   useEffect(() => { void load() }, [load])
 
-  const results = useMemo(() => companions.filter((person) => {
+  // Same-photo profiles are spread apart so they never show next to each other
+  const results = useMemo(() => spreadBySamePhoto(companions.filter((person) => {
     const haystack = [person.display_name, person.bio, person.city, ...(person.categories ?? [])].join(' ').toLowerCase()
     return (!query || haystack.includes(query.toLowerCase())) && (!category || (person.categories ?? []).includes(category))
-  }), [companions, query, category])
+  })), [companions, query, category])
+
+  const storyCompanions = useMemo(() => spreadBySamePhoto(companions), [companions])
 
   return (
     <div className="min-h-screen bg-[#fbfaf7] pb-20 text-[#173f35] md:pb-0">
@@ -219,7 +223,7 @@ export default function Page() {
         </section>
         {!loading && companions.length > 0 && (
           <section className="border-b border-[#eee9e2] pb-5">
-            <StoryRow companions={companions} />
+            <StoryRow companions={storyCompanions} />
           </section>
         )}
         <section className="flex items-center gap-2 overflow-x-auto py-4">
