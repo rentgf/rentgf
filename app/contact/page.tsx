@@ -13,11 +13,30 @@ export default function ContactPage() {
   const [subject, setSubject] = useState('General inquiry')
   const [message, setMessage] = useState('')
   const [sent, setSent] = useState(false)
+  const [sending, setSending] = useState(false)
+  const [error, setError] = useState('')
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    // In production, wire this to an email service
-    setSent(true)
+    setError('')
+    setSending(true)
+    try {
+      const res = await fetch('/api/contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, email, subject, message }),
+      })
+      const json = (await res.json()) as { error?: string }
+      if (!res.ok) {
+        setError(json.error ?? 'Could not send your message. Please try again.')
+        return
+      }
+      setSent(true)
+    } catch {
+      setError('Could not send your message. Please try again.')
+    } finally {
+      setSending(false)
+    }
   }
 
   return (
@@ -49,12 +68,12 @@ export default function ContactPage() {
             <div className="grid gap-4 sm:grid-cols-2">
               <label className="text-sm font-medium">
                 Your name
-                <input required value={name} onChange={(e) => setName(e.target.value)} placeholder="Rahul Sharma"
+                <input required maxLength={100} value={name} onChange={(e) => setName(e.target.value)} placeholder="Rahul Sharma"
                   className="mt-2 w-full rounded-xl border border-[#e5e1da] px-3 py-3 outline-none focus:ring-2 focus:ring-[#bdd2c7]" />
               </label>
               <label className="text-sm font-medium">
                 Email
-                <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com"
+                <input type="email" required maxLength={200} value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com"
                   className="mt-2 w-full rounded-xl border border-[#e5e1da] px-3 py-3 outline-none focus:ring-2 focus:ring-[#bdd2c7]" />
               </label>
             </div>
@@ -74,12 +93,13 @@ export default function ContactPage() {
             </label>
             <label className="text-sm font-medium">
               Message
-              <textarea required value={message} onChange={(e) => setMessage(e.target.value)}
+              <textarea required maxLength={5000} value={message} onChange={(e) => setMessage(e.target.value)}
                 placeholder="Describe your issue or question in detail..."
                 className="mt-2 min-h-32 w-full resize-none rounded-xl border border-[#e5e1da] px-3 py-3 outline-none focus:ring-2 focus:ring-[#bdd2c7]" />
             </label>
-            <button type="submit" className="rounded-xl bg-[#173f35] px-4 py-3 font-semibold text-white">
-              Send message
+            {error && <p role="alert" className="rounded-xl bg-[#fff2ed] px-4 py-3 text-sm text-[#9e4f38]">{error}</p>}
+            <button type="submit" disabled={sending} className="rounded-xl bg-[#173f35] px-4 py-3 font-semibold text-white disabled:opacity-60">
+              {sending ? 'Sending…' : 'Send message'}
             </button>
           </form>
         )}
