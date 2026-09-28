@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { Bell, Compass, Heart, Home, MessageCircle, Search, ShieldCheck, SlidersHorizontal, Star, UserRound } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
-import { spreadBySamePhoto } from '@/lib/spread-companions'
+import { HOME_FEED_LIMIT, spreadBySamePhoto } from '@/lib/spread-companions'
 import { Logo } from '@/components/logo'
 
 type CompanionCard = {
@@ -72,6 +72,8 @@ const PRICE_OPTIONS = [
   { label: '₹2,500+', value: '2500-99999' },
 ]
 
+const SELECT_FIELDS = 'id, profile_id, bio, city, starting_price, avg_rating, total_reviews, categories, languages, display_name, profile_photo_url'
+
 export default function DiscoverPage() {
   const [companions, setCompanions] = useState<CompanionCard[]>([])
   const [loading, setLoading] = useState(true)
@@ -98,19 +100,36 @@ export default function DiscoverPage() {
       if (favs) setSavedIds(new Set(favs.map((f) => f.companion_profile_id)))
       blockedIds = (blocks ?? []).map((b) => b.blocked_id)
     }
+    // Same order as the Home page (rating, then id) so the two lists line up exactly
     let dbQuery = supabase
       .from('public_companion_profiles')
-      .select('id, profile_id, bio, city, starting_price, avg_rating, total_reviews, categories, languages, display_name, profile_photo_url')
+      .select(SELECT_FIELDS)
       .eq('verification_status', 'approved')
       .eq('is_visible', true)
       .order('avg_rating', { ascending: false })
+      .order('id', { ascending: true })
     if (blockedIds.length) dbQuery = dbQuery.not('profile_id', 'in', `(${blockedIds.join(',')})`)
-    const { data } = await dbQuery
+
+    // The exact profiles Home shows (Home does not filter blocked ones)
+    const homeQuery = supabase
+      .from('public_companion_profiles')
+      .select('id')
+      .eq('verification_status', 'approved')
+      .eq('is_visible', true)
+      .order('avg_rating', { ascending: false })
+      .order('id', { ascending: true })
+      .limit(HOME_FEED_LIMIT)
+
+    const [{ data }, { data: homeRows }] = await Promise.all([dbQuery, homeQuery])
     if (data) {
+      const homeIds = new Set((homeRows ?? []).map((row) => row.id))
       const mapped: CompanionCard[] = data.filter((row) => row.id !== null).map((row) => {
         return { id: row.id as string, bio: row.bio, city: row.city, starting_price: row.starting_price, avg_rating: row.avg_rating, review_count: row.total_reviews, categories: row.categories, languages: row.languages, display_name: row.display_name, profile_photo_url: row.profile_photo_url }
       })
-      setCompanions(mapped)
+      // Profiles already shown on Home go to the end, so Discover's top 50 is all fresh faces
+      const fresh = mapped.filter((c) => !homeIds.has(c.id))
+      const seenOnHome = mapped.filter((c) => homeIds.has(c.id))
+      setCompanions([...fresh, ...seenOnHome])
       setAllCategories([...new Set(mapped.flatMap((c) => c.categories ?? []))] as string[])
     }
     setLoading(false)
