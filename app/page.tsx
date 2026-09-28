@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { Bell, Bookmark, CalendarDays, Compass, Heart, Home, MessageCircle, Search, ShieldCheck, Sparkles, Star, UserRound } from 'lucide-react'
 import { categories } from '@/lib/domain/rentgf'
 import { createClient } from '@/lib/supabase/client'
-import { spreadBySamePhoto } from '@/lib/spread-companions'
+import { HOME_FEED_LIMIT, spreadBySamePhoto } from '@/lib/spread-companions'
 import { Footer } from '@/components/footer'
 import { Logo } from '@/components/logo'
 
@@ -169,13 +169,15 @@ export default function Page() {
 
   const load = useCallback(async () => {
     const supabase = createClient()
+    // Order + limit must match Discover so it can push exactly these profiles down its list
     const { data } = await supabase
       .from('public_companion_profiles')
       .select('id, bio, city, starting_price, avg_rating, total_reviews, categories, display_name, profile_photo_url')
       .eq('verification_status', 'approved')
       .eq('is_visible', true)
       .order('avg_rating', { ascending: false })
-      .limit(20)
+      .order('id', { ascending: true })
+      .limit(HOME_FEED_LIMIT)
     if (data) {
       setCompanions(data.filter((row) => row.id !== null).map((row) => {
         return { id: row.id as string, bio: row.bio, city: row.city, starting_price: row.starting_price, avg_rating: row.avg_rating, total_reviews: row.total_reviews, categories: row.categories, display_name: row.display_name, profile_photo_url: row.profile_photo_url }
