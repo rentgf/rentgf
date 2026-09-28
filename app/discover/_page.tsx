@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { Bell, Compass, Heart, Home, MessageCircle, Search, ShieldCheck, SlidersHorizontal, Star, UserRound } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import { spreadBySamePhoto } from '@/lib/spread-companions'
 import { Logo } from '@/components/logo'
 
 type CompanionCard = {
@@ -130,13 +131,14 @@ export default function DiscoverPage() {
     }
   }
 
-  const results = useMemo(() => companions.filter((c) => {
+  // Same-photo profiles are spread apart so they never show next to each other
+  const results = useMemo(() => spreadBySamePhoto(companions.filter((c) => {
     if (query) { const hay = [c.display_name, c.bio, c.city, ...(c.categories ?? [])].join(' ').toLowerCase(); if (!hay.includes(query.toLowerCase())) return false }
     if (city && c.city !== city) return false
     if (category && !(c.categories ?? []).includes(category)) return false
     if (price) { const [min, max] = price.split('-').map(Number); const p = c.starting_price ?? 0; if (p < min || p > max) return false }
     return true
-  }), [companions, query, city, category, price])
+  })), [companions, query, city, category, price])
 
   return (
     <main id="main-content" className="min-h-screen bg-[#fbfaf7] pb-24 text-[#173f35] md:pb-10">
