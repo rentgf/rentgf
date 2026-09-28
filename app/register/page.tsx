@@ -26,10 +26,35 @@ export default function RegisterPage() {
 
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [emailError, setEmailError] = useState('')
+  const [checkingEmail, setCheckingEmail] = useState(false)
+
+  // ── Instant email check on blur ──────────────────────────────────────────
+  async function handleEmailBlur() {
+    if (!email || !email.includes('@')) return
+    setCheckingEmail(true)
+    setEmailError('')
+    try {
+      const supabase = createClient()
+      const { data } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('email', email.trim().toLowerCase())
+        .maybeSingle()
+      if (data) {
+        setEmailError('An account with this email already exists. Please log in instead.')
+      }
+    } catch {
+      // Silently ignore — server-side will catch it
+    } finally {
+      setCheckingEmail(false)
+    }
+  }
 
   // ── Step 1: form submit → send OTP ──────────────────────────────────────
   async function handleRegister(event: React.FormEvent) {
     event.preventDefault()
+    if (emailError) return
     if (!ageConfirmed) { setError('Please confirm you are 18 or older.'); return }
     const birthDate = new Date(dob)
     const age = Math.floor((Date.now() - birthDate.getTime()) / (365.25 * 24 * 60 * 60 * 1000))
@@ -232,10 +257,20 @@ export default function RegisterPage() {
                 type="email"
                 required
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => { setEmail(e.target.value); setEmailError('') }}
+                onBlur={handleEmailBlur}
                 placeholder="you@example.com"
-                className="mt-2 w-full rounded-xl border border-[#e5e1da] px-3 py-3 outline-none focus:ring-2 focus:ring-[#bdd2c7]"
+                className={`mt-2 w-full rounded-xl border px-3 py-3 outline-none focus:ring-2 focus:ring-[#bdd2c7] ${emailError ? 'border-[#9e4f38]' : 'border-[#e5e1da]'}`}
               />
+              {checkingEmail && (
+                <span className="mt-1 block text-xs text-[#9aa49d]">Checking email…</span>
+              )}
+              {emailError && (
+                <p className="mt-1 rounded-xl bg-[#fff2ed] px-3 py-2 text-sm text-[#9e4f38]" role="alert">
+                  {emailError}{' '}
+                  <Link href="/login" className="font-semibold underline">Log in</Link>
+                </p>
+              )}
             </label>
             <label className="text-sm font-medium">
               Password
@@ -274,7 +309,7 @@ export default function RegisterPage() {
             )}
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || !!emailError || checkingEmail}
               className="rounded-xl bg-[#173f35] px-4 py-3 font-semibold text-white disabled:opacity-60"
             >
               {loading ? 'Sending code…' : 'Continue'}
