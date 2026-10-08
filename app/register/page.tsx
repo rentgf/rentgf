@@ -30,22 +30,25 @@ export default function RegisterPage() {
   const [checkingEmail, setCheckingEmail] = useState(false)
 
   // ── Instant email check on blur ──────────────────────────────────────────
+  // Profiles are protected by row-level security, so a direct client-side
+  // query can only ever see the signed-in user's own row. Use the admin
+  // (service-role) check-email route instead, which can see all rows.
   async function handleEmailBlur() {
     if (!email || !email.includes('@')) return
     setCheckingEmail(true)
     setEmailError('')
     try {
-      const supabase = createClient()
-      const { data } = await supabase
-        .from('profiles')
-        .select('id')
-        .eq('email', email.trim().toLowerCase())
-        .maybeSingle()
-      if (data) {
+      const res = await fetch('/api/email/check-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      })
+      const json = await res.json() as { exists?: boolean; error?: string }
+      if (res.ok && json.exists) {
         setEmailError('An account with this email already exists. Please log in instead.')
       }
     } catch {
-      // Silently ignore — server-side will catch it
+      // Silently ignore — server-side will catch it on submit
     } finally {
       setCheckingEmail(false)
     }
