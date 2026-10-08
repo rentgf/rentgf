@@ -7,8 +7,14 @@ const TIME_PATTERN = /^(?:[1-9]|1[0-2]):[0-5]\d (?:AM|PM)$/
 
 function isValidDate(value: string) {
   if (!DATE_PATTERN.test(value)) return false
+  const [year, month, day] = value.split('-').map(Number)
   const parsed = new Date(value + 'T00:00:00Z')
   if (Number.isNaN(parsed.getTime())) return false
+  // Reject impossible calendar dates (e.g. 2024-02-30): Date() silently
+  // rolls these over to the next month, so compare the parts back out.
+  if (parsed.getUTCFullYear() !== year || parsed.getUTCMonth() + 1 !== month || parsed.getUTCDate() !== day) {
+    return false
+  }
   return value >= new Date().toISOString().slice(0, 10)
 }
 
@@ -70,6 +76,23 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Companion pricing is unavailable' }, { status: 409 })
   }
   const totalAmount = hourlyPrice * durationHours
+
+  // Reuse an existing unpaid pending booking for the same companion/date/time
+  // instead of creating a new row every time the customer retries payment.
+  const { data: existingPending } = await supabase
+    .from('bookings')
+    .select('id')
+    .eq('customer_profile_id', user.id)
+    .eq('companion_profile_id', companion.id)
+    .eq('scheduled_date', scheduledDate)
+    .eq('scheduled_time', scheduledTime)
+    .eq('status', 'pending')
+    .eq('payment_status', 'PENDING')
+    .maybeSingle()
+
+  if (existingPending) {
+    return NextResponse.json({ bookingId: existingPending.id, amount: totalAmount, currency: 'INR' }, { status: 200 })
+  }
 
   const { data: booking, error: bookingError } = await supabase
     .from('bookings')
