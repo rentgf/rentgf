@@ -43,6 +43,7 @@ export default function MessagesPage() {
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [draft, setDraft] = useState('')
   const [loading, setLoading] = useState(true)
+  const [listError, setListError] = useState(false)
   const [sending, setSending] = useState(false)
   const [blocked, setBlocked] = useState(false)
   const [sendError, setSendError] = useState('')
@@ -117,11 +118,18 @@ export default function MessagesPage() {
     const filter = cp
       ? `customer_profile_id.eq.${profileId},companion_profile_id.eq.${cp.id}`
       : `customer_profile_id.eq.${profileId}`
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('conversations')
       .select('id, companion_profile_id, customer_profile_id, last_message_at, companion_profiles!inner(profile_id, profiles!inner(display_name, profile_photo_url))')
       .or(filter)
       .order('last_message_at', { ascending: false })
+
+    if (error) {
+      setListError(true)
+      setLoading(false)
+      return
+    }
+
     const blockedIds = new Set((blocks ?? []).map((b) => b.blocked_id))
     const visible = (data ?? []).filter((c) => {
       const other = (c.companion_profiles as unknown as { profile_id: string }).profile_id
@@ -145,6 +153,31 @@ export default function MessagesPage() {
     if (companionProfileId) void loadConversation()
     else void loadAllConversations()
   }, [companionProfileId, loadConversation, loadAllConversations])
+
+  // Keep the inbox list itself live: when any message arrives in one of the
+  // user's conversations, bump that conversation to the top with a fresh
+  // last_message_at instead of waiting for a manual refresh.
+  useEffect(() => {
+    if (companionProfileId || !profileId || conversations.length === 0) return
+    const supabase = createClient()
+    const conversationIds = conversations.map((c) => c.id)
+    const channel = supabase
+      .channel(`inbox:${profileId}`)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, (payload) => {
+        const newMessage = payload.new as Message
+        if (!conversationIds.includes(newMessage.conversation_id)) return
+        setConversations((prev) => {
+          const updated = prev.map((c) =>
+            c.id === newMessage.conversation_id ? { ...c, last_message_at: newMessage.created_at ?? new Date().toISOString() } : c,
+          )
+          return [...updated].sort((a, b) => (b.last_message_at ?? '').localeCompare(a.last_message_at ?? ''))
+        })
+      })
+      .subscribe()
+    return () => { void supabase.removeChannel(channel) }
+    // conversationIds is derived from conversations each render; re-subscribing
+    // when the list changes keeps the filter current without extra state.
+  }, [companionProfileId, profileId, conversations])
 
   useEffect(() => {
     if (!conversationId) return
@@ -185,6 +218,15 @@ export default function MessagesPage() {
         <main className="mx-auto max-w-xl px-4 py-6">
           {loading ? (
             <p className="text-center text-sm text-[#738078]">Loading…</p>
+          ) : listError ? (
+            <div className="py-12 text-center">
+              <div className="mx-auto flex size-16 items-center justify-center rounded-full bg-[#fff3ed]">
+                <MessageCircle className="size-7 text-[#a04f39]" />
+              </div>
+              <h1 className="mt-5 text-2xl font-semibold tracking-[-.05em]">Could not load messages</h1>
+              <p className="mt-2 text-sm leading-6 text-[#68756e]">Something went wrong. Please try again.</p>
+              <button type="button" onClick={() => window.location.reload()} className="mt-6 inline-flex rounded-full bg-[#173f35] px-5 py-3 text-sm font-semibold text-white">Retry</button>
+            </div>
           ) : conversations.length === 0 ? (
             <div className="py-12 text-center">
               <div className="mx-auto flex size-16 items-center justify-center rounded-full bg-[#edf4ed]">
