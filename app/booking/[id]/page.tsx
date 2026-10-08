@@ -53,6 +53,10 @@ export default function BookingPage({ params }: { params: Promise<{ id: string }
   const [bookingId, setBookingId] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [paymentDone, setPaymentDone] = useState(false)
+  // Tracks a booking that was already created but not yet paid, so if the
+  // customer dismisses the Razorpay modal or payment fails and they retry,
+  // we reuse the same booking instead of creating a duplicate pending one.
+  const [pendingBookingId, setPendingBookingId] = useState<string | null>(null)
 
   useEffect(() => {
     async function load() {
@@ -93,26 +97,32 @@ export default function BookingPage({ params }: { params: Promise<{ id: string }
     if (!date) { setError('Please choose a date.'); setSubmitting(false); return }
     if (!location) { setError('Please enter a meeting location.'); setSubmitting(false); return }
 
-    const bookingRes = await fetch('/api/bookings', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        companionId: id,
-        scheduledDate: date,
-        scheduledTime: time,
-        durationHours: duration,
-        location,
-        notes: note,
-        activityType: activity,
-      }),
-    })
-    const bookingData = await bookingRes.json() as { bookingId?: string; error?: string }
-    if (!bookingRes.ok || !bookingData.bookingId) {
-      setError(bookingData.error ?? 'Failed to create booking')
-      setSubmitting(false)
-      return
+    // Reuse the pending booking from a previous dismissed/failed payment
+    // attempt instead of creating a new one each time "Pay" is pressed.
+    let bookingIdForPayment = pendingBookingId
+    if (!bookingIdForPayment) {
+      const bookingRes = await fetch('/api/bookings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          companionId: id,
+          scheduledDate: date,
+          scheduledTime: time,
+          durationHours: duration,
+          location,
+          notes: note,
+          activityType: activity,
+        }),
+      })
+      const bookingData = await bookingRes.json() as { bookingId?: string; error?: string }
+      if (!bookingRes.ok || !bookingData.bookingId) {
+        setError(bookingData.error ?? 'Failed to create booking')
+        setSubmitting(false)
+        return
+      }
+      bookingIdForPayment = bookingData.bookingId
+      setPendingBookingId(bookingIdForPayment)
     }
-    const bookingIdForPayment = bookingData.bookingId
 
     const razorpayKeyId = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID
     if (!razorpayKeyId) {
@@ -153,6 +163,7 @@ export default function BookingPage({ params }: { params: Promise<{ id: string }
         const verifyData = await verifyRes.json() as { success?: boolean; error?: string }
         if (verifyData.success) {
           setBookingId(bookingIdForPayment)
+          setPendingBookingId(null)
           setPaymentDone(true)
         } else {
           setError('Payment verification failed. Contact support.')
