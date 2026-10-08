@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { Bell } from 'lucide-react'
 import { MobileShell } from '@/components/mobile-shell'
+import { ErrorState, ErrorStateContent, ErrorStateDescription, ErrorStateHeader, ErrorStateMedia, ErrorStateTitle } from '@/components/error-state'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 
@@ -19,26 +20,36 @@ export default function NotificationsPage() {
   const router = useRouter()
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(false)
 
   useEffect(() => {
     async function load() {
       const supabase = createClient()
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { router.push('/login?redirectTo=/notifications'); return }
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('notifications')
         .select('id, type, title, body, is_read, created_at')
         .eq('profile_id', user.id)
         .order('created_at', { ascending: false })
         .limit(50)
+
+      if (error) {
+        setLoadError(true)
+        setLoading(false)
+        return
+      }
+
       setNotifications(data ?? [])
-      // Mark all as read
-      if (data && data.length > 0) {
+      // Mark all as read — update local state too so the unread dots clear
+      // immediately instead of waiting for a page refresh.
+      if (data && data.some((n) => !n.is_read)) {
         await supabase.from('notifications').update({ is_read: true }).eq('profile_id', user.id).eq('is_read', false)
+        setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })))
       }
       setLoading(false)
     }
-    load()
+    void load()
   }, [router])
 
   return (
@@ -46,6 +57,17 @@ export default function NotificationsPage() {
       <main className="mx-auto max-w-xl px-4 py-6">
         {loading ? (
           <p className="text-center text-sm text-[#738078]">Loading…</p>
+        ) : loadError ? (
+          <ErrorState>
+            <ErrorStateHeader>
+              <ErrorStateMedia variant="icon"><Bell /></ErrorStateMedia>
+              <ErrorStateTitle>Could not load notifications</ErrorStateTitle>
+              <ErrorStateDescription>Something went wrong. Please try again.</ErrorStateDescription>
+            </ErrorStateHeader>
+            <ErrorStateContent>
+              <button type="button" onClick={() => window.location.reload()} className="rounded-full bg-[#173f35] px-4 py-2 text-sm font-semibold text-white">Retry</button>
+            </ErrorStateContent>
+          </ErrorState>
         ) : notifications.length === 0 ? (
           <div className="py-12 text-center">
             <div className="mx-auto flex size-16 items-center justify-center rounded-full bg-[#edf4ed]">
