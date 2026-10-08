@@ -1,9 +1,8 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Bell } from 'lucide-react'
+import { Bell, AlertTriangle } from 'lucide-react'
 import { MobileShell } from '@/components/mobile-shell'
-import { ErrorState, ErrorStateContent, ErrorStateDescription, ErrorStateHeader, ErrorStateMedia, ErrorStateTitle } from '@/components/error-state'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 
@@ -58,16 +57,16 @@ export default function NotificationsPage() {
         {loading ? (
           <p className="text-center text-sm text-[#738078]">Loading…</p>
         ) : loadError ? (
-          <ErrorState>
-            <ErrorStateHeader>
-              <ErrorStateMedia variant="icon"><Bell /></ErrorStateMedia>
-              <ErrorStateTitle>Could not load notifications</ErrorStateTitle>
-              <ErrorStateDescription>Something went wrong. Please try again.</ErrorStateDescription>
-            </ErrorStateHeader>
-            <ErrorStateContent>
-              <button type="button" onClick={() => window.location.reload()} className="rounded-full bg-[#173f35] px-4 py-2 text-sm font-semibold text-white">Retry</button>
-            </ErrorStateContent>
-          </ErrorState>
+          <div className="py-12 text-center">
+            <div className="mx-auto flex size-16 items-center justify-center rounded-full bg-[#fff3ed]">
+              <AlertTriangle className="size-7 text-[#a04f39]" />
+            </div>
+            <h1 className="mt-5 text-2xl font-semibold">Could not load notifications</h1>
+            <p className="mt-2 text-sm leading-6 text-[#68756e]">Something went wrong. Please try again.</p>
+            <button type="button" onClick={() => window.location.reload()} className="mt-6 inline-flex rounded-full bg-[#173f35] px-5 py-3 text-sm font-semibold text-white">
+              Retry
+            </button>
+          </div>
         ) : notifications.length === 0 ? (
           <div className="py-12 text-center">
             <div className="mx-auto flex size-16 items-center justify-center rounded-full bg-[#edf4ed]">
