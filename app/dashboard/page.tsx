@@ -48,7 +48,17 @@ export default function DashboardPage() {
         supabase.from('notifications').select('id', { count: 'exact', head: true }).eq('profile_id', user.id).eq('is_read', false),
       ])
 
-      if (bookingsResult.error) setLoadError('Could not load your bookings. Please refresh.')
+      // Surface any fetch failure instead of silently showing zero counts —
+      // a failed favorites/notifications query previously looked identical
+      // to "you have none", which hides real problems from the customer.
+      const errors = [
+        bookingsResult.error && 'bookings',
+        favsResult.error && 'likes',
+        notifsResult.error && 'notifications',
+      ].filter(Boolean)
+      if (errors.length > 0) {
+        setLoadError(`Could not load your ${errors.join(', ')}. Please refresh.`)
+      }
 
       const mapped: Booking[] = (bookingsResult.data ?? []).map((b) => {
         const cp = b.companion_profiles as unknown as { profiles: { display_name: string | null } }
@@ -67,8 +77,8 @@ export default function DashboardPage() {
       setDisplayName(profileResult.data?.display_name ?? profileResult.data?.full_name ?? 'there')
       setBookings(mapped)
       setTotalBookings(bookingsResult.count ?? mapped.length)
-      setFavCount(favsResult.count ?? 0)
-      setUnreadCount(notifsResult.count ?? 0)
+      setFavCount(favsResult.error ? 0 : favsResult.count ?? 0)
+      setUnreadCount(notifsResult.error ? 0 : notifsResult.count ?? 0)
       setLoading(false)
     }
     void load()
